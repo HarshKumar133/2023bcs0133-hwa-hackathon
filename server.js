@@ -15,6 +15,7 @@ import {
   TRUST_PROXY,
 } from './src/config.js';
 import { createStore, openDatabase, StoreError } from './src/db.js';
+import { createPostgresStore, openPostgresDatabase } from './src/postgres-db.js';
 import { totalsFor } from './src/pricing.js';
 import {
   isValidOrderRef,
@@ -292,11 +293,11 @@ function guestId(req, issueTo = null) {
   return createHash('sha256').update(token).digest('hex');
 }
 
-function cartFromRequest(req, res, store, owner = guestId(req)) {
+async function cartFromRequest(req, res, store, owner = guestId(req)) {
   const cookies = parseCookies(req.headers.cookie);
   const id = cookies[CART_COOKIE];
   if (!id) return null;
-  const cart = store.getCart(id, owner);
+  const cart = await store.getCart(id, owner);
   if (!cart || cart.status !== 'active') {
     clearCartCookie(req, res);
     return null;
@@ -353,7 +354,7 @@ function guestKey(req, key) {
   return createHmac('sha256', RECEIPT_SECRET).update(`checkout:${session}:${key}`).digest('hex');
 }
 
-function renderShopPage(req, res, store, screen, {
+async function renderShopPage(req, res, store, screen, {
   status = 200,
   errors = {},
   values = {},
@@ -363,10 +364,10 @@ function renderShopPage(req, res, store, screen, {
   const csrfToken = ensureCsrf(req, res);
   const owner = guestId(req, res);
   const previousId = parseCookies(req.headers.cookie)[CART_COOKIE];
-  if (previousId) store.bindLegacyCart(previousId, owner);
-  let cart = cartFromRequest(req, res, store, owner);
+  if (previousId) await store.bindLegacyCart(previousId, owner);
+  let cart = await cartFromRequest(req, res, store, owner);
   if (!cart) {
-    cart = store.createCart(owner);
+    cart = await store.createCart(owner);
     cartCookie(req, res, cart.id);
   }
   const key = idempotencyFrom(idempotencyKey) || newIdempotencyKey();
@@ -392,7 +393,7 @@ function renderShopPage(req, res, store, screen, {
   }));
 }
 
-function renderLookupPage(req, res, store, { status = 200, values = {}, errors = {}, notice = '' } = {}) {
+async function renderLookupPage(req, res, store, { status = 200, values = {}, errors = {}, notice = '' } = {}) {
   const csrfToken = ensureCsrf(req, res);
   const body = renderLookup({ csrfToken, values, errors, notice });
   sendHtml(res, status, page({
@@ -522,8 +523,21 @@ export function createApp({
   logger = console,
   opsToken = OPS_TOKEN,
 } = {}) {
-  const db = openDatabase(dbPath);
-  const store = createStore(db);
+  const connectionString =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL;
+  let db;
+  let store;
+  let ready = Promise.resolve();
+  if (connectionString) {
+    db = openPostgresDatabase(connectionString);
+    store = createPostgresStore(db);
+    ready = db.ready;
+  } else {
+    db = openDatabase(dbPath);
+    store = createStore(db);
+  }
 
   const orderLimiter = createRateLimiter({ windowMs: 60_000, max: 8 });
   const lookupLimiter = createRateLimiter({ windowMs: 60_000, max: 12 });
@@ -562,7 +576,7 @@ export function createApp({
       if (path === '/healthz' && method === 'GET') {
         let ok = false;
         try {
-          ok = store.health();
+          ok = await store.health();
         } catch {
           ok = false;
         }
@@ -582,7 +596,7 @@ export function createApp({
       }
 
       if (['/', '/cart', '/checkout'].includes(path) && method === 'GET') {
-        renderShopPage(req, res, store, path === '/' ? 'home' : path.slice(1));
+        await renderShopPage(req, res, store, path === '/' ? 'home' : path.slice(1));
         return;
       }
 
@@ -600,7 +614,7 @@ export function createApp({
       }
 
       if (path === '/api/cart' && method === 'GET') {
-        const cart = cartFromRequest(req, res, store);
+        const cart = await cartFromRequest(req, res, store);
         if (!cart) {
           const draft = draftCart();
           sendJson(res, 200, { cart: draft, etag: '"cart-new-0"' }, { ETag: '"cart-new-0"' });
@@ -616,12 +630,12 @@ export function createApp({
         const form = await parseFormBody(req);
         verifyCsrf(req, form.csrf);
         const check = validateQuantity(form.quantity);
-        const cart = cartFromRequest(req, res, store);
+        const cart = await cartFromRequest(req, res, store);
         if (!cart || cart.id !== form.cartId || cart.revision !== Number(form.revision) || !check.ok) {
-          renderShopPage(req, res, store, 'cart', { status: check.ok ? 409 : 422, notice: check.message || 'Review the current basket quantity and try again.' });
+          await renderShopPage(req, res, store, 'cart', { status: check.ok ? 409 : 422, notice: check.message || 'Review the current basket quantity and try again.' });
           return;
         }
-        store.updateCartQuantity({ cartId: cart.id, guestId: guestId(req), expectedRevision: cart.revision, quantity: check.quantity });
+        await store.updateCartQuantity({ cartId: cart.id, guestId: guestId(req), expectedRevision: cart.revision, quantity: check.quantity });
         redirect(res, '/cart');
         return;
       }
@@ -647,7 +661,7 @@ export function createApp({
         const cookieCartId = cookies[CART_COOKIE] || null;
 
         if (cookieCartId && expected.cartId && expected.cartId !== 'new' && expected.cartId !== cookieCartId) {
-          const current = store.getCart(cookieCartId, guestId(req));
+          const current = await store.getCart(cookieCartId, guestId(req));
           sendJson(
             res,
             409,
@@ -674,7 +688,7 @@ export function createApp({
         }
 
         try {
-          const cart = store.updateCartQuantity({
+          const cart = await store.updateCartQuantity({
             cartId: cookieCartId,
             guestId: guestId(req),
             expectedRevision: expected.revision,
@@ -700,7 +714,7 @@ export function createApp({
         if (!key || typeof body.cartId !== 'string' || !body.cartId) {
           throw new HttpError(400, 'invalid_attempt', 'A checkout attempt is required.');
         }
-        const order = store.getOrderByIdempotencyKey(guestKey(req, key), guestId(req));
+        const order = await store.getOrderByIdempotencyKey(guestKey(req, key), guestId(req));
         // The cart cookie may already have been cleared by a successful commit.
         // A matching guest-scoped attempt and original cart authorize recovery.
         sendJson(res, 200, { order: order && order.cartId === body.cartId ? orderResponse(order) : null });
@@ -743,7 +757,7 @@ export function createApp({
         const cookieCartId = cookies[CART_COOKIE] || null;
         const requestedCartId = body.cartId ? String(body.cartId) : null;
         const key = guestKey(req, rawKey);
-        const replay = requestedCartId ? store.getOrderByIdempotencyKey(key, guestId(req)) : null;
+        const replay = requestedCartId ? await store.getOrderByIdempotencyKey(key, guestId(req)) : null;
         const authorizedReplay = !cookieCartId && replay && replay.cartId === requestedCartId;
 
         // A cart belongs to the browser that holds its HttpOnly cookie. A request
@@ -751,7 +765,7 @@ export function createApp({
         // exception is an idempotent replay: the unguessable request key proves
         // that this caller already placed the order.
         if (requestedCartId && requestedCartId !== cookieCartId && !authorizedReplay) {
-          const current = cookieCartId ? store.getCart(cookieCartId, guestId(req)) : null;
+          const current = cookieCartId ? await store.getCart(cookieCartId, guestId(req)) : null;
           sendJson(
             res,
             409,
@@ -777,7 +791,7 @@ export function createApp({
         }
 
         try {
-          const result = store.placeOrder({
+          const result = await store.placeOrder({
             cartId,
             guestId: guestId(req),
             expectedRevision: expected.revision,
@@ -805,7 +819,7 @@ export function createApp({
         const customerCheck = validateCustomer(form);
 
         if (!customerCheck.ok) {
-          renderShopPage(req, res, store, 'checkout', {
+          await renderShopPage(req, res, store, 'checkout', {
             status: 422,
             errors: customerCheck.errors,
             values: customerCheck.values,
@@ -822,9 +836,9 @@ export function createApp({
         const cookieCartId = cookies[CART_COOKIE] || null;
         const requestedCartId = String(form.cartId || '') || null;
 
-        const replay = requestedCartId && !cookieCartId ? store.getOrderByIdempotencyKey(key, guestId(req)) : null;
+        const replay = requestedCartId && !cookieCartId ? await store.getOrderByIdempotencyKey(key, guestId(req)) : null;
         if (requestedCartId && requestedCartId !== cookieCartId && replay?.cartId !== requestedCartId) {
-          renderShopPage(req, res, store, 'checkout', {
+          await renderShopPage(req, res, store, 'checkout', {
             status: 409,
             values: customerCheck.values,
             notice: 'This cart changed somewhere else. Review the current total and try again.',
@@ -837,7 +851,7 @@ export function createApp({
         const expectedRevision = Number.parseInt(String(form.revision || '0'), 10);
 
         try {
-          const result = store.placeOrder({
+          const result = await store.placeOrder({
             cartId,
             guestId: guestId(req),
             expectedRevision: Number.isInteger(expectedRevision) ? expectedRevision : 0,
@@ -858,7 +872,7 @@ export function createApp({
           }
           const mapped = storeErrorToApi(error);
           if (!mapped) throw error;
-          renderShopPage(req, res, store, 'checkout', {
+          await renderShopPage(req, res, store, 'checkout', {
             status: mapped.status,
             values: customerCheck.values,
             notice: storeErrorToNotice(error),
@@ -869,7 +883,7 @@ export function createApp({
       }
 
       if (path === '/receipt' && method === 'GET') {
-        renderLookupPage(req, res, store);
+        await renderLookupPage(req, res, store);
         return;
       }
 
@@ -880,7 +894,7 @@ export function createApp({
         verifyCsrf(req, form.csrf);
         const lookupCheck = validateLookup(form);
         if (!lookupCheck.ok) {
-          renderLookupPage(req, res, store, {
+          await renderLookupPage(req, res, store, {
             status: 422,
             values: lookupCheck.values,
             errors: lookupCheck.errors,
@@ -888,9 +902,9 @@ export function createApp({
           return;
         }
 
-        const order = store.findOrderForLookup(lookupCheck.values.orderRef, normalizeEmail(lookupCheck.values.email));
+        const order = await store.findOrderForLookup(lookupCheck.values.orderRef, normalizeEmail(lookupCheck.values.email));
         if (!order) {
-          renderLookupPage(req, res, store, {
+          await renderLookupPage(req, res, store, {
             status: 404,
             values: lookupCheck.values,
             notice: "We couldn't find a receipt with those details. Check the reference and email, then try again.",
@@ -932,7 +946,7 @@ export function createApp({
           return;
         }
 
-        const order = store.getOrderByPublicId(publicId);
+        const order = await store.getOrderByPublicId(publicId);
         if (!order) {
           sendHtml(res, 404, renderReceiptLocked());
           return;
@@ -976,7 +990,7 @@ export function createApp({
           }));
           return;
         }
-        const result = store.opsSearch(orderRef);
+        const result = await store.opsSearch(orderRef);
         const csrfToken = ensureCsrf(req, res);
         sendHtml(res, 200, renderOps({
           csrfToken,
@@ -1047,7 +1061,7 @@ export function createApp({
     }
   });
 
-  return { server, store, db };
+  return { server, store, db, ready };
 }
 
 function cryptoRandomId() {

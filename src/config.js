@@ -4,7 +4,10 @@ import crypto from 'node:crypto';
 
 export const ROOT = path.resolve(import.meta.dirname, '..');
 export const PUBLIC_DIR = path.join(ROOT, 'public');
-export const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(ROOT, 'data'));
+export const DATA_DIR = path.resolve(
+  process.env.DATA_DIR ||
+  (process.env.VERCEL ? '/tmp/trailturn-data' : path.join(ROOT, 'data')),
+);
 export const DB_PATH = path.resolve(process.env.DB_PATH || path.join(DATA_DIR, 'trailturn.db'));
 export const PORT = Number.parseInt(process.env.PORT || '3000', 10);
 export const HOST = process.env.HOST || '127.0.0.1';

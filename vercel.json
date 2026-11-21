@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npm test",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index"
+    }
+  ]
+}
