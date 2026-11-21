@@ -695,16 +695,6 @@
       if (saved && saved.cartId && saved.idempotencyKey) pending = saved;
     } catch { /* Same-page recovery only if storage is unavailable. */ }
 
-    const currentCartId = form.querySelector('[data-cart-id-input]')?.value;
-    const currentRevision = form.querySelector('[data-cart-revision-input]')?.value;
-    if (pending && (
-      form.dataset.checkoutPhase === 'recoverable-failure' ||
-      pending.cartId !== currentCartId ||
-      String(pending.revision) !== currentRevision
-    )) {
-      remember(null);
-    }
-
     function remember(attempt) {
       pending = attempt;
       try {
@@ -721,9 +711,31 @@
       if (hiddenIdempotency) hiddenIdempotency.value = newKey();
     }
 
+    const currentCartId = form.querySelector('[data-cart-id-input]')?.value;
+    const currentRevision = form.querySelector('[data-cart-revision-input]')?.value;
+    const recoverableFailure = form.dataset.checkoutPhase === 'recoverable-failure';
+    if (pending && (
+      recoverableFailure ||
+      pending.cartId !== currentCartId ||
+      String(pending.revision) !== currentRevision
+    )) {
+      remember(null);
+      if (recoverableFailure) refreshIdempotencyKey();
+    }
+
+    if (pending) {
+      for (const name of ['fullName', 'email', 'phone', 'address1', 'address2', 'city', 'state', 'pin']) {
+        const field = form.querySelector(`[name="${name}"]`);
+        if (field && typeof pending[name] === 'string') field.value = pending[name];
+      }
+      const csrfField = form.querySelector('[name="csrf"]');
+      if (csrfField) csrfField.value = csrf;
+      if (hiddenIdempotency) hiddenIdempotency.value = pending.idempotencyKey;
+      setStatus('A previous checkout attempt may be unresolved. Review these details, then choose Place demo order to retry.');
+    }
+
     function setBusy(busy) {
       if (submit) submit.disabled = busy;
-      form.querySelectorAll('fieldset').forEach(fieldset => { fieldset.disabled = busy; });
     }
 
     function currentQuantity() {
@@ -760,12 +772,9 @@
     });
 
     if (pending) {
-      setStatus('A previous checkout has no confirmed outcome. Check it before placing another order.');
       window.addEventListener('pageshow', () => {
         if (!pending) return;
-        setBusy(true);
-        setStatus('Waiting for the shop to confirm a previous order…');
-        form.submit();
+        setBusy(false);
       });
     }
   }

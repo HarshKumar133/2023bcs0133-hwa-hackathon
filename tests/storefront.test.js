@@ -181,7 +181,7 @@ test('removing the last unit persists zero and neither checkout can commit it', 
   assert.equal(cart.totals.totalPaise, 0);
   const html = await (await app.request('/', { headers: { cookie: g.cookie } })).text();
   assert.match(html, /data-total>₹0</);
-  assert.match(html, /data-checkout-submit disabled/);
+  assert.match(html, /data-checkout-link[^>]*aria-disabled="true"/);
   const idempotencyKey = randomUUID();
   const result = await g.json('/api/orders', { customer, cartId: cart.id, idempotencyKey }, etag);
   assert.equal(result.status, 422);

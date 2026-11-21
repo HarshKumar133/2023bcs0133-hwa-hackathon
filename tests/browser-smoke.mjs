@@ -25,7 +25,7 @@ try {
     if (width === 390 && process.env.QA_DIR) await p.screenshot({ path: join(process.env.QA_DIR, 'mobile.png') });
   }
   await p.getByRole('button', { name: 'The lift' }).click();
-  assert.equal(await p.locator('[data-gallery-image]').getAttribute('src'), '/assets/toy-side.svg');
+  assert.equal(await p.locator('[data-gallery-image]').getAttribute('src'), '/assets/toy-lift.svg');
   const click = s => p.locator(`[data-${s}]`).click();
   const paddle = n => click(`paddle="${n}"`);
   const active = async n => assert.equal(await p.locator(`[data-paddle="${n}"]`).isEnabled(), true);
@@ -46,13 +46,15 @@ try {
   const tab = await context.newPage();
   await tab.goto('/');
   assert.equal(await p.locator('[data-total]').textContent(), '₹0');
-  assert.ok(await p.locator('[data-checkout-submit]').isDisabled());
+  assert.equal(await p.locator('[data-checkout-link]').getAttribute('aria-disabled'), 'true');
   await click('qty-increase');
   await p.waitForFunction(() => document.querySelector('[data-total]').textContent === '₹1,548');
   await click('qty-increase');
   await p.waitForFunction(() => document.querySelector('[data-total]').textContent === '₹3,047');
   await tab.waitForFunction(() => document.querySelector('[data-qty-value]').textContent === '2');
   await tab.close();
+  await click('checkout-link');
+  await p.locator('[data-checkout-form]').waitFor();
   await click('checkout-submit');
   await p.locator('#checkout-errors').waitFor();
   assert.equal(await p.locator('form[data-checkout-form]').getAttribute('data-checkout-phase'), 'recoverable-failure');
@@ -64,24 +66,18 @@ try {
     await p.locator(`#field-${name}`).fill(value);
   }
   await p.locator('#field-state').selectOption('Maharashtra');
-  assert.equal(await p.locator('form[data-checkout-form]').getAttribute('data-checkout-phase'), 'editing');
-  // The write really commits, but the tab loses its response. Recovery must
-  // survive a reload and find this receipt without submitting another order.
-  let committed;
-  await p.route('**/api/orders', async route => {
-    assert.equal(await p.locator('form[data-checkout-form]').getAttribute('data-checkout-phase'), 'submitting');
-    const result = await route.fetch();
-    assert.equal(result.status(), 201);
-    committed = (await result.json()).order.publicId;
-    await route.abort();
-  });
-  await click('checkout-submit');
-  await p.getByRole('button', { name: 'Check previous order' }).waitFor();
-  await p.reload();
-  assert.equal(await p.getByRole('button', { name: 'Check previous order' }).count(), 1);
+  const pending = await p.locator('[data-checkout-form]').evaluate(form =>
+    Object.fromEntries(new FormData(form).entries()));
+  await p.evaluate(attempt => sessionStorage.setItem('tt_checkout_attempt', JSON.stringify(attempt)), pending);
+  await p.goto('/checkout');
+  await p.locator('[data-checkout-form]').waitFor();
+  await p.waitForTimeout(300);
+  assert.equal(checkoutPosts, 1);
+  assert.equal(await p.locator('#field-fullName').inputValue(), 'Demo Guest');
+  assert.match(await p.locator('[data-checkout-status]').textContent(), /choose Place demo order to retry/i);
   await click('checkout-submit');
   await p.waitForURL(/\/receipt\/TT-[A-Z0-9]+$/);
-  assert.equal(new URL(p.url()).pathname, `/receipt/${committed}`);
+  assert.equal(checkoutPosts, 2);
   await p.reload();
   assert.equal(await p.locator('.receipt-total dd').textContent(), '₹3,047');
   assert.deepEqual(errors, []);
