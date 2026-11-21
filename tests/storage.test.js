@@ -48,7 +48,7 @@ test('an authorized receipt and attempt survive reopening the file in a fresh No
     else process.env.DATA_DIR = oldDataDir;
   });
   const { createApp } = await import('../server.js');
-  const app = createApp({ dbPath, logger: {} });
+  const app = createApp({ dbPath, logger: {}, databaseUrl: '' });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${app.server.address().port}`;
   let saved;
@@ -81,7 +81,7 @@ test('an authorized receipt and attempt survive reopening the file in a fresh No
     import assert from 'node:assert/strict';
     import { createApp } from ${JSON.stringify(new URL('../server.js', import.meta.url).href)};
     const saved = JSON.parse(process.env.TEST_ATTEMPT);
-    const { server } = createApp({ logger: {} });
+    const { server } = createApp({ logger: {}, databaseUrl: '' });
     await new Promise(r => server.listen(0,'127.0.0.1',r));
     try {
       const base = 'http://127.0.0.1:' + server.address().port;

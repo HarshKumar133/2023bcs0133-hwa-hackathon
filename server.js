@@ -522,16 +522,13 @@ export function createApp({
   dbPath = DB_PATH,
   logger = console,
   opsToken = OPS_TOKEN,
+  databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || '',
 } = {}) {
-  const connectionString =
-    process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.POSTGRES_PRISMA_URL;
   let db;
   let store;
   let ready = Promise.resolve();
-  if (connectionString) {
-    db = openPostgresDatabase(connectionString);
+  if (databaseUrl) {
+    db = openPostgresDatabase(databaseUrl, logger);
     store = createPostgresStore(db);
     ready = db.ready;
   } else {
@@ -1054,10 +1051,12 @@ export function createApp({
   });
 
   server.on('close', () => {
-    try {
+    if (typeof db.close === 'function') {
       db.close();
-    } catch {
-      // The database may already be closed.
+    } else if (typeof db.end === 'function') {
+      db.end().catch(error => {
+        logger.error?.(`[trailturn] database shutdown failed: ${error?.message || error}`);
+      });
     }
   });
 

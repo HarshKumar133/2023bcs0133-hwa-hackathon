@@ -45,8 +45,11 @@ function orderRowToView(row) {
   };
 }
 
-export function openPostgresDatabase(connectionString) {
+export function openPostgresDatabase(connectionString, logger = console) {
   const pool = new Pool({ connectionString });
+  pool.on('error', error => {
+    logger.error?.(`[trailturn] Postgres pool error: ${error?.message || error}`);
+  });
   const ready = pool.query(`
     CREATE TABLE IF NOT EXISTS carts (
       id TEXT PRIMARY KEY,

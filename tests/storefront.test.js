@@ -15,7 +15,7 @@ const customer = {
 };
 
 async function launch(dbPath = ':memory:') {
-  const { server, db } = createApp({ dbPath, logger: {} });
+  const { server, db } = createApp({ dbPath, logger: {}, databaseUrl: '' });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   return { db, base, request: (path, opts) => fetch(base + path, { redirect: 'manual', ...opts }),
