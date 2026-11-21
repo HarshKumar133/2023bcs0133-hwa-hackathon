@@ -30,7 +30,7 @@ CONFIG = {
     "opencode": "1.19.5"
 }  # yours: made for Harsh by the hackathon page
 
-VERSION = "1.9.5"
+VERSION = "1.9.7"
 _CTX = None
 
 
@@ -389,7 +389,8 @@ def back_from_full_screen():
         _out("\x1b[0m\x1b[?25h\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?2004l\r\n\x1b[J")
 
 
-RUN_AGAIN = "py init.py" if WIN else "python3 init.py"
+PY = ("py" if shutil.which("py") else "python") if WIN else "python3"
+RUN_AGAIN = f"{PY} init.py"
 LIVE = {}
 ONLINE = ["Check this computer is online: open https://github.com in a browser.", "On a campus or office network, try a phone hotspot: some networks block these downloads."]
 
@@ -748,6 +749,11 @@ def old_sessions(folder, opencode):
         note("warn", f"Deleted {gone} of the {n} old sessions. The rest stay here, and still aren't sent with your entry.")
 
 
+def checkin_reason(folder):
+    res = read_json(os.path.join(folder, ".hwa", "check-result.json"))
+    return res.get("reason")
+
+
 def checkin_failed(folder):
     try:
         with open(os.path.join(folder, ".hwa", "check-result.json"), encoding="utf-8") as f:
@@ -980,6 +986,9 @@ def github_login(gh):
     return login, uid
 
 
+RETURNING = False
+
+
 NAME = (CONFIG.get("project") or "entry-hwa-hackathon").lower()
 MARK = CONFIG.get("mark") or hashlib.sha256(f"entry:{CONFIG.get('token')}".encode()).hexdigest()[:12]
 REPO_NOTE = "Happy While Away hackathon entry"
@@ -1066,11 +1075,13 @@ def move_here(here, there, make):
 
 
 def project_folder():
+    global RETURNING
     here = os.path.dirname(os.path.abspath(__file__))
     if os.path.exists(os.path.join(here, ".hwa", "config.json")):
         if folder_owner(here) != "mine":
             steps, then = move_here(here, new_folder(), True)
             stop(f"This folder is another hackathon entry's project (made with someone else's init.py): {here}", steps, again=False, then=then)
+        RETURNING = bool(read_json(os.path.join(here, ".hwa", "config.json")).get("repo"))
     else:
         others = others_in(here)
         if others:
@@ -1082,7 +1093,9 @@ def project_folder():
             steps, then = move_here(here, new_folder(), True)
             stop(f"init.py makes the folder it's in your project, so it needs a new, empty folder of its own. This one already holds other files ({shown}): {here}", steps, again=False, then=then)
     synced = re.search(r"onedrive|icloud|mobile documents|dropbox|google drive|googledrive", here, re.I)
-    if synced:
+    if synced and RETURNING:
+        say(f"     This folder is synced to {synced.group(0)}, and it's already your project, so it stays here.", 2)
+    elif synced:
         note("warn", f"This folder is synced to {synced.group(0)}: {here}")
         say("     A project there syncs thousands of files and can break. Better: move init.py to a new folder that isn't synced, and run it there.")
         if not yes_no("  Set up here anyway? (yes or no): ", False):
@@ -1097,6 +1110,41 @@ def project_folder():
     except OSError:
         stop(f"This terminal can't write in {here}.", (["On a Mac, allow it: System Settings, Privacy and Security, Files and Folders, then turn on your terminal's access."] if MAC else []) + ["Or make a new, empty folder somewhere else (not inside OneDrive or iCloud), move init.py there, and open the terminal in that folder."])
     return here
+
+
+SUBMIT_COPY = re.compile(r"^submit(?: ?\(\d+\)| copy(?: \d+)?| - copy(?: \(\d+\))?|[-_ ]\d+)\.py$", re.I)
+
+
+def tidy_copies(folder):
+    mine = os.path.abspath(__file__)
+    main_init = os.path.join(folder, "init.py")
+    try:
+        if os.path.normcase(mine) != os.path.normcase(main_init) and os.path.dirname(os.path.normcase(mine)) == os.path.normcase(folder) and INIT_COPY.match(me()):
+            with open(mine, "rb") as f:
+                text = f.read()
+            if os.path.exists(main_init):
+                writable(main_init)
+            part = main_init + ".new"
+            with open(part, "wb") as f:
+                f.write(text)
+            os.replace(part, main_init)
+    except OSError:
+        return
+    removed = []
+    for name in sorted(os.listdir(folder)):
+        path = os.path.join(folder, name)
+        low = name.lower()
+        if low in ("init.py", "submit.py") or not os.path.isfile(path):
+            continue
+        if INIT_COPY.match(name) or SUBMIT_COPY.match(name) or low in ("init.py.new", "submit.py.new"):
+            try:
+                writable(path)
+                os.remove(path)
+                removed.append(name)
+            except OSError:
+                pass
+    if removed:
+        ok(f"Older copies removed: {', '.join(removed)}. This folder keeps one init.py and one submit.py.")
 
 
 def private(path, mode):
@@ -1348,11 +1396,11 @@ def setup_vercel(folder):
     account = (who.stdout or "").strip().splitlines()[-1:] or [""]
     team = vercel_team(vercel, folder)
     where = f"**{account[0]}**" + (f", team **{team}**" if team else "")
-    if not yes_no(f"  Signed in to Vercel as {where}. Make your project there? (yes or no): ", True):
-        stop("You chose not to use the Vercel account signed in on this computer.", [f"Another account: run `{q(vercel)} logout`, then `{q(vercel)} login` with yours.", f"Another team of yours: run `{q(vercel)} switch` and choose it.", "Then run init.py again."])
-    ok(f"Vercel account: {where}")
     name = NAME
     linked = read_json(os.path.join(folder, ".vercel", "project.json")).get("projectName")
+    if linked != name and not yes_no(f"  Signed in to Vercel as {where}. Make your project there? (yes or no): ", True):
+        stop("You chose not to use the Vercel account signed in on this computer.", [f"Another account: run `{q(vercel)} logout`, then `{q(vercel)} login` with yours.", f"Another team of yours: run `{q(vercel)} switch` and choose it.", "Then run init.py again."])
+    ok(f"Vercel account: {where}")
     if linked != name:
         working(f"Making your Vercel project {name}...")
         r = run([vercel, "project", "add", name], cwd=folder, timeout=180)
@@ -1385,6 +1433,8 @@ def launchers(folder, opencode, node=None):
         if ADDED:
             lines.append('set "PATH=' + ";".join(cmd_path(d) for d in ADDED) + ';%PATH%"')
         lines += [f'set "{k}="' for k in OPENCODE_OVERRIDES]
+        if ENV.get("OPENCODE_DB"):
+            lines.append(f'set "OPENCODE_DB={cmd_path(ENV["OPENCODE_DB"])}"')
         lines += ['cd /d "%~dp0"', "echo.", "echo   ONLY OPEN-SOURCE MODELS ARE ALLOWED: pick one in /models (Qwen, DeepSeek, Kimi, GLM, gpt-oss, Llama, Mistral).", "echo   Closed models (Claude, GPT, Gemini, Grok) and paid providers are against the rules.", "echo."]
         seal = os.path.join(".hwa", "hwa-collect.mjs")
         if node:
@@ -1408,14 +1458,15 @@ def launchers(folder, opencode, node=None):
         p = os.path.join(folder, "hwa-start.sh")
         writable(p)
         path = "".join(shlex.quote(d) + ":" for d in ADDED)
+        own_db = f'export OPENCODE_DB={shlex.quote(ENV["OPENCODE_DB"])}\n' if ENV.get("OPENCODE_DB") else ""
         with open(p, "w", encoding="utf-8", newline="\n") as f:
             warn = "printf '\\n\\033[1;37;41m ONLY OPEN-SOURCE MODELS ARE ALLOWED \\033[0m\\n\\033[31m  Pick one in /models (Qwen, DeepSeek, Kimi, GLM, gpt-oss, Llama, Mistral). Closed models (Claude, GPT, Gemini, Grok) and paid providers are against the rules.\\033[0m\\n\\n'"
             if node:
                 n, c = shlex.quote(node), ".hwa/hwa-collect.mjs"
                 o = shlex.quote(opencode)
-                f.write(f'#!/bin/sh\nexport PATH={path}"$PATH"\nunset {" ".join(OPENCODE_OVERRIDES)}\ncd "$(dirname "$0")" && export PWD="$(pwd)" && {warn} || exit 1\ntrap : INT\n{n} {c} watch - </dev/null >/dev/null 2>&1 &\nW=$!\n{n} {c} pick - --report .hwa/pick.txt\nS="$(cat .hwa/pick.txt 2>/dev/null)"\nif [ "$S" = "stop" ]; then kill $W 2>/dev/null; wait $W 2>/dev/null; exit 1; fi\n{BEFORE_SH}\nif [ -n "$S" ]; then {o} -s "$S"; else {o}; fi\nE=$?\n{AFTER_SH}\nkill $W 2>/dev/null\nwait $W 2>/dev/null\n{n} {c} seal - </dev/null >/dev/null 2>&1\nexit $E\n')
+                f.write(f'#!/bin/sh\nexport PATH={path}"$PATH"\n{own_db}unset {" ".join(OPENCODE_OVERRIDES)}\ncd "$(dirname "$0")" && export PWD="$(pwd)" && {warn} || exit 1\ntrap : INT\n{n} {c} watch - </dev/null >/dev/null 2>&1 &\nW=$!\n{n} {c} pick - --report .hwa/pick.txt\nS="$(cat .hwa/pick.txt 2>/dev/null)"\nif [ "$S" = "stop" ]; then kill $W 2>/dev/null; wait $W 2>/dev/null; exit 1; fi\n{BEFORE_SH}\nif [ -n "$S" ]; then {o} -s "$S"; else {o}; fi\nE=$?\n{AFTER_SH}\nkill $W 2>/dev/null\nwait $W 2>/dev/null\n{n} {c} seal - </dev/null >/dev/null 2>&1\nexit $E\n')
             else:
-                f.write(f'#!/bin/sh\nexport PATH={path}"$PATH"\nunset {" ".join(OPENCODE_OVERRIDES)}\ncd "$(dirname "$0")" && export PWD="$(pwd)" && {warn} || exit 1\n{BEFORE_SH}\n{shlex.quote(opencode)}\nE=$?\n{AFTER_SH}\nexit $E\n')
+                f.write(f'#!/bin/sh\nexport PATH={path}"$PATH"\n{own_db}unset {" ".join(OPENCODE_OVERRIDES)}\ncd "$(dirname "$0")" && export PWD="$(pwd)" && {warn} || exit 1\n{BEFORE_SH}\n{shlex.quote(opencode)}\nE=$?\n{AFTER_SH}\nexit $E\n')
         os.chmod(p, 0o755)
 
 
@@ -1488,6 +1539,7 @@ def main():
 
     step(1, "Your project folder")
     folder = project_folder()
+    tidy_copies(folder)
     ok(f"Your project folder: **{folder}**")
     say("     Your site, OpenCode and submit.py all work in this folder.", 2)
     os.makedirs(TOOLS, exist_ok=True)
@@ -1499,6 +1551,7 @@ def main():
     step(3, "Git")
     ensure_git(links)
     step(4, f"OpenCode {CONFIG.get('opencode') or ''}".strip())
+    own_opencode_db(folder)
     opencode = ensure_opencode()
     step(5, "GitHub and your repo")
     gh = ensure_gh(links)
@@ -1543,10 +1596,14 @@ def main():
         os.remove(result)
     working("Checking in with the hackathon site. The first time OpenCode runs, this can take a minute...")
     r = run([node, collector, "check", "-", "--server", SERVER], cwd=folder, env=env, capture=False, timeout=300)
-    if r.returncode != 0:
+    if r.returncode != 0 and RETURNING and checkin_reason(folder) in ("offline", "site", "busy"):
+        note("warn", "The hackathon site couldn't record this check-in just now. Your setup is fine: carry on, and submit.py tells the site later.")
+    elif r.returncode != 0:
         checkin_failed(folder)
-    ok("Checked in with the hackathon site.")
+    else:
+        ok("Checked in with the hackathon site.")
     lock_down(folder)
+    bring_sessions(node, collector, folder, env)
 
     say("")
     ok("**All set:**")
@@ -1556,27 +1613,32 @@ def main():
     if not interactive():
         next_steps(folder, opened=False)
         return
-    read_first()
-    how_it_works()
-    open_models_warning()
-    if not yes_no("\n  Start OpenCode in your project folder now? (yes or no): ", True):
-        next_steps(folder, opened=False)
-        return
+    if RETURNING:
+        open_models_warning()
+    else:
+        read_first()
+        how_it_works()
+        open_models_warning()
+        if not yes_no("\n  Start OpenCode in your project folder now? (yes or no): ", True):
+            next_steps(folder, opened=False)
+            return
     if not claim_window(node, collector, folder, env):
         say("")
         note("warn", "OpenCode is already open for this project in another window. Use that window: one at a time. To open it here instead, leave the other one first (type **/exit** there), then run init.py again.")
+        next_steps(folder, opened=False)
         return
     if fix_opencode_data() == "opencode2":
         return
-    note("go", "Starting OpenCode...")
+    session = last_session(node, collector, folder, env) if RETURNING else None
+    note("go", "Opening your last OpenCode session..." if session else "Starting OpenCode...")
     clear_for_full_screen()
-    code_ = opencode_session(opencode, folder, env, first_prompt, node, collector)
+    code_ = opencode_session(opencode, folder, env, first_prompt, node, collector, session)
     back_from_full_screen()
     if code_ not in (0, None):
         note("warn", f"OpenCode stopped with an error (code {code_}).")
-        if opencode2_db():
+        if opencode2_db() and not ENV.get("OPENCODE_DB"):
             opencode2_note()
-        elif other_opencode_db():
+        elif other_opencode_db() and not ENV.get("OPENCODE_DB"):
             note("warn", f"OpenCode's saved data on this computer is from another version of OpenCode, which this one can't open. Move it aside (nothing is deleted), then start OpenCode again: **{move_command()}**")
     next_steps(folder, opened=True)
 
@@ -1627,7 +1689,16 @@ def move_command():
     return f'move "{folder}" "{folder}-before-hackathon"' if WIN else f'mv "{folder}" "{folder}-before-hackathon"'
 
 
+def own_opencode_db(folder):
+    kept = read_json(os.path.join(folder, ".hwa", "config.json")).get("opencode_db")
+    if kept or opencode2_db():
+        ENV["OPENCODE_DB"] = kept or os.path.join(opencode_data(), "opencode-hwa.db")
+        CONFIG["opencode_db"] = ENV["OPENCODE_DB"]
+
+
 def fix_opencode_data():
+    if ENV.get("OPENCODE_DB"):
+        return
     if opencode2_db():
         opencode2_note()
         return "opencode2"
@@ -1795,12 +1866,36 @@ def open_models_warning():
     say("")
 
 
-def opencode_session(opencode, folder, env, first_prompt, node=None, collector=None):
+def bring_sessions(node, collector, folder, env):
+    if not interactive() or not node or not collector or not os.path.exists(collector):
+        return
+    try:
+        subprocess.run([node, collector, "bring", "-", "--server", SERVER], cwd=folder, env=env, timeout=1800)
+    except Exception:
+        pass
+
+
+def last_session(node, collector, folder, env):
+    if not node or not collector or not os.path.exists(collector):
+        return None
+    report = os.path.join(folder, ".hwa", "pick.txt")
+    try:
+        if os.path.exists(report):
+            os.remove(report)
+        subprocess.run([node, collector, "pick", "-", "--report", report, "--server", SERVER], cwd=folder, env=dict(env, HWA_PICK_LAST="1"), stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=120)
+        with open(report, encoding="utf-8") as f:
+            sid = f.read().strip()
+    except Exception:
+        return None
+    return sid if re.match(r"^ses_[A-Za-z0-9]+$", sid) else None
+
+
+def opencode_session(opencode, folder, env, first_prompt, node=None, collector=None, session=None):
     import signal
 
     watcher = seals(node, collector, folder, env, "watch")
     try:
-        p = subprocess.Popen([opencode, "--prompt", first_prompt], cwd=folder, env=env)
+        p = subprocess.Popen([opencode, "-s", session] if session else [opencode, "--prompt", first_prompt], cwd=folder, env=env)
     except OSError as e:
         quiet_stop(watcher)
         stop(f"OpenCode couldn't start ({e}).", ["Close this terminal, open a new one in the same folder, and run init.py again."], again=False)
@@ -1858,7 +1953,7 @@ def next_steps(folder, opened):
     if not opened:
         open_models_warning()
         steps.append(f"Start OpenCode: {start}\nUse only open-source models in it. Build your site with it, then leave it: type **/exit** and press **Enter**.")
-    steps.append(f"{'In' if here else 'Then, in'} this same terminal, run: `{'py' if WIN else 'python3'} submit.py`\nIt saves your work's bundle first, then commits, pushes, deploys and sends your entry, and tells you if anything's missing.")
+    steps.append(f"{'In' if here else 'Then, in'} this same terminal, run: `{PY} submit.py`\nIt saves your work's bundle first, then commits, pushes, deploys and sends your entry, and tells you if anything's missing.")
     steps.append("Check what it shows, and type **yes** when it asks. Your hackathon page then says **Submitted**.")
     head = f"{mark('party')} **OpenCode has closed. Next, send your entry:**" if opened else f"{mark('do')} **Next:**"
     rows = [head]

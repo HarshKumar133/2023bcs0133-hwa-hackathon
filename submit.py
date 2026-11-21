@@ -13,7 +13,7 @@ import urllib.error
 import urllib.request
 from urllib.parse import urlsplit
 
-VERSION = "1.9.3"
+VERSION = "1.9.5"
 _CTX = None
 
 
@@ -102,7 +102,8 @@ def system_pem():
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WIN = os.name == "nt"
-RUN_AGAIN = "py submit.py" if WIN else "python3 submit.py"
+PY = ("py" if shutil.which("py") else "python") if WIN else "python3"
+RUN_AGAIN = f"{PY} submit.py"
 ONLINE = ["Check this computer is online: open https://github.com in a browser.", "On a campus or office network, try a phone hotspot."]
 CONFIG = {}
 SERVER = "https://apply-happywhileaway.vercel.app"
@@ -1003,7 +1004,7 @@ def main():
     status = api("status")
     if status.get("error"):
         if "token" in status["error"].lower():
-            stop("**Your token was changed on the hackathon page, so this submit.py's copy no longer works.**", [f"**Download your init.py again:** open {SERVER}/hackathon, sign in, and press **Download my init.py**.", "Save it in this folder, over the old one, as init.py, and run it: `" + ("py init.py" if WIN else "python3 init.py") + "`. It keeps everything and updates submit.py.", f"Then run submit.py again: `{RUN_AGAIN}`"], again=False)
+            stop("**Your token was changed on the hackathon page, so this submit.py's copy no longer works.**", [f"**Download your init.py again:** open {SERVER}/hackathon, sign in, and press **Download my init.py**.", "Save it in this folder, over the old one, as init.py, and run it: `" + f"{PY} init.py" + "`. It keeps everything and updates submit.py.", f"Then run submit.py again: `{RUN_AGAIN}`"], again=False)
         site_said("The hackathon site couldn't be asked about your entry", status["error"])
     if status.get("sent_back"):
         note("warn", f"Your entry was sent back for corrections: {status['sent_back'].get('reason') or 'see the hackathon page'}.")
@@ -1067,6 +1068,8 @@ def load():
     ENV = dict(os.environ, NO_COLOR="1", PWD=HERE, GIT_TERMINAL_PROMPT="0")
     if CONFIG.get("path"):
         ENV["PATH"] = CONFIG["path"] + os.pathsep + os.environ.get("PATH", "")
+    if CONFIG.get("opencode_db"):
+        ENV["OPENCODE_DB"] = CONFIG["opencode_db"]
 
 
 def india_time(iso):
