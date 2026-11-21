@@ -77,7 +77,6 @@ export function validateCustomer(input = {}) {
     city: text(input.city).slice(0, 60),
     state: text(input.state).slice(0, 80),
     pin: text(input.pin),
-    deliveryNotes: text(input.deliveryNotes).slice(0, 240),
   };
 
   const errors = {};
@@ -126,9 +125,9 @@ export function validateCustomer(input = {}) {
 }
 
 export function validateQuantity(value) {
-  const quantity = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
-  if (!Number.isInteger(quantity) || quantity < 1) {
-    return { ok: false, quantity: 1, message: 'Choose at least one TrailTurn.' };
+  const quantity = typeof value === 'number' || (typeof value === 'string' && /^\d+$/.test(value)) ? Number(value) : NaN;
+  if (!Number.isSafeInteger(quantity) || quantity < 0) {
+    return { ok: false, message: 'Choose a whole quantity of zero or more.' };
   }
   if (quantity > PRODUCT.maxQuantity) {
     return { ok: false, quantity: PRODUCT.maxQuantity, message: `The demo limit is ${PRODUCT.maxQuantity} units per order.` };

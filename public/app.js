@@ -9,8 +9,9 @@
   const money = (paise) =>
     new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
+      currency: document.body.dataset.currency,
+      minimumFractionDigits: paise % 100 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
     }).format(paise / 100);
 
   function newKey() {
@@ -480,8 +481,7 @@
     initDemo();
     initPrint();
     initServerErrorFocus();
-    initCart();
-    initCheckout();
+    initCheckout(initCart());
   });
 
   // Cart and checkout are defined below so the demo can load independently.
@@ -507,15 +507,14 @@
 
     if (!qtyValue || !qtyDecrease || !qtyIncrease || !subtotalEl || !deliveryEl || !totalEl) return;
 
-    const unitPrice = Number(document.body.dataset.unitPrice || 0);
-    const delivery = Number(document.body.dataset.delivery || 0);
-    const maxQty = Number(document.body.dataset.maxQty || 5);
+    const maxQty = Number(document.body.dataset.maxQty);
     const csrf = document.body.dataset.csrf || '';
 
     const cart = {
       id: document.body.dataset.cartId || null,
       revision: Number(document.body.dataset.cartRevision || 0),
-      quantity: Number(qtyValue.textContent || 1),
+      quantity: Number(qtyValue.textContent),
+      totals: JSON.parse(document.body.dataset.totals),
     };
 
     let updating = false;
@@ -555,24 +554,25 @@
     }
 
     function updateTotals(quantity) {
-      const subtotal = unitPrice * quantity;
-      const total = subtotal + delivery;
+      const { subtotalPaise, deliveryPaise, totalPaise } = cart.totals;
       qtyValue.textContent = String(quantity);
       if (summaryQtyEl) summaryQtyEl.textContent = String(quantity);
       if (headerQtyEl) headerQtyEl.textContent = String(quantity);
-      subtotalEl.textContent = money(subtotal);
-      deliveryEl.textContent = money(delivery);
-      totalEl.textContent = money(total);
-      if (submitLabel) submitLabel.textContent = `Place demo order · ${money(total)}`;
-      qtyDecrease.disabled = updating || quantity <= 1;
+      subtotalEl.textContent = money(subtotalPaise);
+      deliveryEl.textContent = money(deliveryPaise);
+      totalEl.textContent = money(totalPaise);
+      $('[data-empty-basket]').hidden = quantity !== 0;
+      $('[data-checkout-submit]').disabled = updating || quantity === 0;
+      if (submitLabel) submitLabel.textContent = `Place demo order · ${totalEl.textContent}`;
+      qtyDecrease.disabled = updating || quantity === 0;
       qtyIncrease.disabled = updating || quantity >= maxQty;
       updateHidden();
     }
 
     function setBusy(busy) {
       updating = busy;
-      $('[data-checkout-submit]').disabled = busy;
-      qtyDecrease.disabled = busy || cart.quantity <= 1;
+      $('[data-checkout-submit]').disabled = busy || cart.quantity === 0;
+      qtyDecrease.disabled = busy || cart.quantity === 0;
       qtyIncrease.disabled = busy || cart.quantity >= maxQty;
       if (summary) summary.setAttribute('aria-busy', busy ? 'true' : 'false');
     }
@@ -593,8 +593,8 @@
     }
 
     async function changeQuantity(delta) {
-      if (updating || $('[data-checkout-form]').getAttribute('aria-busy') === 'true') return;
-      const next = Math.min(maxQty, Math.max(1, cart.quantity + delta));
+      if (updating || $('[data-checkout-form]').dataset.locked === 'true') return;
+      const next = Math.min(maxQty, Math.max(0, cart.quantity + delta));
       if (next === cart.quantity) return;
 
       setBusy(true);
@@ -615,9 +615,7 @@
         const data = await response.json().catch(() => ({}));
 
         if (response.ok && data.cart) {
-          cart.id = data.cart.id;
-          cart.revision = data.cart.revision;
-          cart.quantity = data.cart.quantity;
+          Object.assign(cart, data.cart);
           updateTotals(cart.quantity);
           refreshIdempotencyKey();
           rememberCart();
@@ -627,16 +625,12 @@
 
         if (response.status === 409) {
           if (data.cart) {
-            cart.id = data.cart.id;
-            cart.revision = data.cart.revision;
-            cart.quantity = data.cart.quantity;
+            Object.assign(cart, data.cart);
             updateTotals(cart.quantity);
             rememberCart();
           } else {
-            cart.id = null;
-            cart.revision = 0;
-            cart.quantity = 1;
-            updateTotals(1);
+            setNotice('Reload the shop to see the current basket.');
+            return;
           }
           if (data.code === 'cart_completed' && data.order && data.order.receiptUrl) {
             setNotice('This cart has already been ordered. Open your receipt.', {
@@ -677,10 +671,6 @@
 
     qtyDecrease.addEventListener('click', () => changeQuantity(-1));
     qtyIncrease.addEventListener('click', () => changeQuantity(1));
-    document.addEventListener('tt:cart', ({ detail }) => {
-      Object.assign(cart, detail);
-      updateTotals(cart.quantity);
-    });
 
     window.addEventListener('storage', async (event) => {
       if (event.key !== 'tt_cart') return;
@@ -688,11 +678,9 @@
         const response = await fetch('/api/cart', { headers: { Accept: 'application/json' } });
         if (!response.ok) return;
         const data = await response.json();
-        if (!data.cart) return;
+        if (!data.cart || $('[data-checkout-form]').dataset.locked === 'true') return;
         const changed = data.cart.revision !== cart.revision || data.cart.id !== cart.id;
-        cart.id = data.cart.id;
-        cart.revision = data.cart.revision;
-        cart.quantity = data.cart.quantity;
+        Object.assign(cart, data.cart);
         updateTotals(cart.quantity);
         if (changed) {
           refreshIdempotencyKey();
@@ -705,9 +693,13 @@
     });
 
     updateTotals(cart.quantity);
+    return (current) => {
+      Object.assign(cart, current);
+      updateTotals(cart.quantity);
+    };
   }
 
-  function initCheckout() {
+  function initCheckout(applyCart) {
     const form = $('[data-checkout-form]');
     if (!form) return;
 
@@ -715,9 +707,6 @@
     const submit = $('[data-checkout-submit]');
     const submitLabel = $('[data-checkout-submit-label]');
     const csrf = document.body.dataset.csrf || '';
-    const maxQty = Number(document.body.dataset.maxQty || 5);
-    const unitPrice = Number(document.body.dataset.unitPrice || 0);
-    const delivery = Number(document.body.dataset.delivery || 0);
     const hiddenCartId = $('[data-cart-id-input]');
     const hiddenRevision = $('[data-cart-revision-input]');
     const hiddenIdempotency = $('[data-idempotency-input]');
@@ -737,16 +726,51 @@
       return `"cart-${id || 'new'}-${revision}"`;
     }
 
-    function setBusy(busy) {
-      if (submit) submit.disabled = busy;
-      form.setAttribute('aria-busy', busy ? 'true' : 'false');
-      if (submitLabel) {
-        if (busy) submitLabel.textContent = 'Placing demo order…';
-        else {
-          const total = unitPrice * currentQuantity() + delivery;
-          submitLabel.textContent = `Place demo order · ${money(total)}`;
-        }
-      }
+    const transitions = {
+      editing: { submit: 'submitting' },
+      submitting: { confirmed: 'confirmed', failure: 'recoverable-failure' },
+      'recoverable-failure': { edit: 'editing', submit: 'submitting' },
+      confirmed: {},
+    };
+    const storageKey = 'tt_checkout_attempt';
+    let pending = null;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(storageKey));
+      if (saved?.cartId && saved.idempotencyKey) pending = saved;
+    } catch { /* Storage may be unavailable; keep same-page recovery. */ }
+    let phase = pending ? 'recoverable-failure' : form.dataset.checkoutPhase;
+
+    function remember(attempt) {
+      pending = attempt;
+      try {
+        if (attempt) sessionStorage.setItem(storageKey, JSON.stringify(attempt));
+        else sessionStorage.removeItem(storageKey);
+      } catch { /* In-memory attempt remains usable. */ }
+    }
+
+    function renderPhase() {
+      const busy = phase === 'submitting';
+      const locked = busy || Boolean(pending) || phase === 'confirmed';
+      form.dataset.checkoutPhase = phase;
+      form.dataset.locked = String(locked);
+      form.setAttribute('aria-busy', String(busy));
+      form.querySelectorAll('fieldset').forEach(el => { el.disabled = locked; });
+      const qty = currentQuantity();
+      $('[data-qty-increase]').disabled = locked || qty >= Number(document.body.dataset.maxQty);
+      $('[data-qty-decrease]').disabled = locked || qty === 0;
+      submit.disabled = busy || phase === 'confirmed' || (qty === 0 && !pending);
+      submitLabel.textContent = phase === 'confirmed' ? 'Order confirmed'
+        : busy ? 'Waiting for the shop…'
+        : pending ? 'Check previous order'
+        : `Place demo order · ${$('[data-total]').textContent}`;
+    }
+
+    function move(event) {
+      const next = transitions[phase][event];
+      if (!next) return false;
+      phase = next;
+      renderPhase();
+      return true;
     }
 
     function clearErrors() {
@@ -837,13 +861,18 @@
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      if (submit?.disabled) return;
+      if (submit.disabled) return;
+      if (!pending && !hiddenCartId.value) {
+        setStatus('Reload the shop to start a fresh cart before placing an order.');
+        return;
+      }
 
+      const customer = collect(); // Disabled fieldsets are omitted from FormData.
+      const checking = Boolean(pending);
+      if (!move('submit')) return;
       clearErrors();
-      setBusy(true);
-      setStatus('Checking your details…');
+      setStatus(checking ? 'Checking whether your previous order was saved…' : 'Checking your details…');
 
-      const customer = collect();
       const idempotencyKey = hiddenIdempotency?.value || newKey();
       if (hiddenIdempotency) hiddenIdempotency.value = idempotencyKey;
 
@@ -855,24 +884,45 @@
       };
 
       try {
-        const response = await fetch('/api/orders', {
+        if (!checking) remember({ cartId: payload.cartId, idempotencyKey });
+        const response = await fetch(checking ? '/api/orders/status' : '/api/orders', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRF-Token': csrf,
             'If-Match': etag(),
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(checking ? pending : payload),
+          signal: AbortSignal.timeout(20000),
         });
 
         const data = await response.json().catch(() => ({}));
 
         if (response.ok && data.order?.receiptUrl) {
+          remember(null);
+          move('confirmed');
           setStatus('Order placed. Opening your receipt…');
           window.location.assign(data.order.receiptUrl);
           return;
         }
 
+        if (checking) {
+          if (response.ok && data.order === null) {
+            if (hiddenIdempotency && hiddenCartId?.value === pending.cartId) hiddenIdempotency.value = pending.idempotencyKey;
+            remember(null);
+            setStatus('No saved order was found for this attempt. Review your cart and details before submitting.');
+          } else {
+            setStatus('Order status is still unknown. Check again in a moment.');
+          }
+          move('failure');
+          return;
+        }
+        // Only a recognized rejection establishes that the write did not succeed.
+        if (![400, 403, 404, 409, 422, 428, 429].includes(response.status) || !data.code) {
+          throw new Error('Uncertain order outcome');
+        }
+        remember(null);
+        move('failure');
         if (response.status === 422 && data.errors) {
           renderErrors(data.errors);
           setStatus('Check the highlighted delivery details.');
@@ -880,13 +930,11 @@
         }
 
         if (response.status === 409) {
-          const nextCart = data.cart || { id: null, revision: 0, quantity: 1 };
-          document.dispatchEvent(new CustomEvent('tt:cart', { detail: nextCart }));
-          if (data.order?.receiptUrl) {
-            setStatus('This order already exists. Opening the receipt…');
-            window.location.assign(data.order.receiptUrl);
+          if (!data.cart) {
+            setStatus('Reload the shop to review the current basket.');
             return;
           }
+          applyCart(data.cart);
           if (hiddenIdempotency) hiddenIdempotency.value = newKey();
           const notice = $('[data-cart-notice]');
           if (notice) {
@@ -917,19 +965,15 @@
 
         setStatus('We could not place the order. Try again.');
       } catch {
-        setStatus(
-          'We could not reach the server. Your details are still here. Try again — the order will not be duplicated.',
-        );
-      } finally {
-        setBusy(false);
+        move('failure');
+        setStatus('The shop has not confirmed the outcome. Check the previous order before submitting again.');
       }
     });
 
-    // Keep the fallback form's hidden quantity aligned if JavaScript is active.
-    const quantity = currentQuantity();
-    if (quantity > maxQty) {
-      const qty = $('[data-qty-value]');
-      if (qty) qty.textContent = String(maxQty);
-    }
+    form.addEventListener('input', () => {
+      if (!pending && phase === 'recoverable-failure') move('edit');
+    });
+    renderPhase();
+    if (pending) setStatus('A previous checkout has no confirmed outcome. Check it before placing another order.');
   }
 })();

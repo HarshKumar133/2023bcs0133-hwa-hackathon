@@ -1,20 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 760" role="img" aria-labelledby="heroTitle heroDesc">
   <title id="heroTitle">TrailTurn floor toy</title>
-  <desc id="heroDesc">A round birch drum with three sage paddles. The first paddle is raised above a printed three-step route. A brass timer dial sits on the front.</desc>
+  <desc id="heroDesc">Low green drum with three cream nose paddles, a printed route and a reward cup at the front.</desc>
   <defs>
     <radialGradient id="topWood" cx="36%" cy="28%" r="82%">
-      <stop offset="0" stop-color="#f5e6c9"/>
-      <stop offset="0.55" stop-color="#e4c99f"/>
-      <stop offset="1" stop-color="#caa574"/>
+      <stop offset="0" stop-color="#adc59a"/>
+      <stop offset="0.55" stop-color="#83a27b"/>
+      <stop offset="1" stop-color="#638166"/>
     </radialGradient>
     <linearGradient id="sideWood" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ca9255"/>
-      <stop offset="0.55" stop-color="#b97a3f"/>
-      <stop offset="1" stop-color="#925828"/>
+      <stop offset="0" stop-color="#607e5c"/>
+      <stop offset="0.55" stop-color="#476c50"/>
+      <stop offset="1" stop-color="#314e3b"/>
     </linearGradient>
     <linearGradient id="paddleFace" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#bfcdb5"/>
-      <stop offset="1" stop-color="#8fa383"/>
+      <stop offset="0" stop-color="#fff6de"/>
+      <stop offset="1" stop-color="#e6d6b4"/>
     </linearGradient>
     <linearGradient id="paddleSide" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#708668"/>
@@ -100,7 +100,7 @@
       <text x="0" y="-23" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="7" letter-spacing="1.4" fill="#5e4519" opacity="0.7">TRAILTURN</text>
     </g>
 
-    <g transform="translate(380 520)">
+    <g transform="translate(230 484) scale(.66)">
       <circle cx="0" cy="0" r="38" fill="url(#brass)" stroke="#2b241b" stroke-width="2"/>
       <circle cx="0" cy="0" r="28" fill="none" stroke="#7d5b24" stroke-width="0.9" opacity="0.55"/>
       <circle cx="0" cy="0" r="3.5" fill="#7d5b24"/>
@@ -113,7 +113,13 @@
       <text x="-18" y="-18" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="5.5" fill="#5e4519" opacity="0.75">0</text>
     </g>
 
-    <text x="380" y="584" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="9" letter-spacing="4.2" fill="#5c381a" opacity="0.68">TRAILTURN</text>
+    <g transform="translate(380 542)">
+      <rect x="-24" y="-17" width="48" height="25" rx="10" fill="#243e30"/>
+      <path d="M-62 13 Q-62 55 0 56 Q62 55 62 13" fill="#57745c" stroke="#2b3629" stroke-width="2"/>
+      <ellipse cy="13" rx="62" ry="23" fill="#acbf99" stroke="#2b3629" stroke-width="2"/>
+      <ellipse cy="13" rx="51" ry="16" fill="#3e5844"/>
+      <g fill="#cb9b61"><ellipse cx="-10" cy="16" rx="6" ry="4"/><ellipse cx="6" cy="12" rx="5" ry="4"/><ellipse cx="12" cy="20" rx="5" ry="3"/></g>
+    </g>
 
     <g fill="#6d3e1d" opacity="0.55">
       <circle cx="170" cy="374" r="3"/>

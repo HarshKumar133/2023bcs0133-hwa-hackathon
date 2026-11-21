@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-labelledby="topTitle topDesc">
   <title id="topTitle">TrailTurn top view</title>
-  <desc id="topDesc">Top view of the TrailTurn drum with three sage paddles, a printed route, and a brass hub.</desc>
+  <desc id="topDesc">Top view of the green TrailTurn with three cream paddles, a printed route, and a front reward cup.</desc>
   <defs>
     <radialGradient id="thumbTop" cx="36%" cy="28%" r="82%">
-      <stop offset="0" stop-color="#f5e6c9"/>
-      <stop offset="0.55" stop-color="#e4c99f"/>
-      <stop offset="1" stop-color="#caa574"/>
+      <stop offset="0" stop-color="#adc59a"/>
+      <stop offset="0.55" stop-color="#83a27b"/>
+      <stop offset="1" stop-color="#638166"/>
     </radialGradient>
     <linearGradient id="thumbPaddle" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#bfcdb5"/>
-      <stop offset="1" stop-color="#8fa383"/>
+      <stop offset="0" stop-color="#fff6de"/>
+      <stop offset="1" stop-color="#e6d6b4"/>
     </linearGradient>
     <linearGradient id="thumbPaddleSide" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#708668"/>
@@ -57,6 +57,8 @@
     <text x="0" y="3" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700" fill="#2f4a38">1</text>
   </g>
 
+  <ellipse cx="300" cy="536" rx="58" ry="34" fill="#acbf99" stroke="#2b3629" stroke-width="3"/>
+  <ellipse cx="300" cy="536" rx="47" ry="25" fill="#3e5844"/>
   <g transform="translate(300 300)">
     <circle cx="0" cy="0" r="50" fill="url(#thumbBrass)" stroke="#2b241b" stroke-width="3"/>
     <circle cx="0" cy="0" r="38" fill="none" stroke="#7d5b24" stroke-width="1.4" opacity="0.55"/>

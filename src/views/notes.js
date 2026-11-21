@@ -1,5 +1,6 @@
 import { sectionLabel } from './layout.js';
-import { PRODUCT, formatINR } from '../pricing.js';
+import { PRODUCT } from '../pricing.js';
+import { formatINR } from './money.js';
 
 const references = [
   {
@@ -25,17 +26,19 @@ const references = [
   {
     title: 'State, transactions, and retries',
     items: [
-      ['Stately XState — state machines', 'https://stately.ai/docs/xstate'],
-      ['Medusa — cart completion', 'https://docs.medusajs.com/'],
+      ['Stately XState — state machines', 'https://github.com/statelyai/xstate'],
+      ['Medusa — cart completion workflow', 'https://github.com/medusajs/medusa/blob/develop/packages/core/core-flows/src/cart/workflows/complete-cart.ts'],
       ['node-postgres — transactions', 'https://node-postgres.com/features/transactions'],
       ['MDN — If-Match', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-Match'],
       ['MDN — storage event', 'https://developer.mozilla.org/en-US/docs/Web/API/Window/storage_event'],
+      ['MDN — currency formatting with Intl.NumberFormat', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat'],
     ],
   },
   {
     title: 'Security and authorization',
     items: [
       ['OWASP — input validation', 'https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html'],
+      ['OWASP — business logic security', 'https://cheatsheetseries.owasp.org/cheatsheets/Business_Logic_Security_Cheat_Sheet.html'],
       ['OWASP — SQL injection prevention', 'https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html'],
       ['OWASP — XSS prevention', 'https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html'],
       ['OWASP — authorization', 'https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html'],

@@ -1,4 +1,4 @@
-import { formatINR } from '../pricing.js';
+import { formatINR } from './money.js';
 import { escapeAttr, escapeHtml } from '../security.js';
 import { page } from './layout.js';
 

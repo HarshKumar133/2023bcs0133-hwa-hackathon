@@ -16,7 +16,7 @@ Open **http://127.0.0.1:3000**. `npm run dev` restarts the server when applicati
 
 1. Under **Try a route**, select **Switchback**, start the window and push paddle 1. Paddle 3 lifts. Walk away and let 15 minutes pass. No portion is used; returning enables paddle 3, followed by paddle 2. Long way uses **1 → 2 → 3** instead.
 2. The demo accelerates the clock: a push consumes one opportunity, and **Let 15 min pass** skips one. There are at most four opportunities per window (0, 15, 30, 45). If the window closes before the third push, opening another window preserves the current paddle.
-3. Under **Buy**, one unit is **₹2,948 delivered** (₹2,899 + ₹49). Change the quantity and compare a second shop tab. Delivery is charged once per order, up to five units.
+3. Under **Buy**, the basket starts at **₹0**. Add one TrailTurn for **₹1,548 delivered** (₹1,499 + ₹49). Delivery applies once per nonempty order. The demo limit is five units; removing the last unit disables checkout.
 4. Use fictional delivery details such as *Demo Guest*, `guest@example.test`, `9876543210`, *Unit 4, Demo Road, Pune, Maharashtra 411001*. Submit, reload the receipt, and try `/receipt` in a fresh browser session with the order reference and email. The bare receipt path is private without authorization.
 
 ## Verification
@@ -46,6 +46,10 @@ BASE_URL=http://127.0.0.1:3109 CHROME_PATH="/path/to/chrome" node "$QA_DIR/check
 On macOS, the typical `CHROME_PATH` is `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`. With `QA_DIR` exported, this also saves desktop and mobile screenshots.
 
 ## Implementation and deployment
+
+[Step 02 handoff: one complete order](HANDOFF.md) maps the product page to the SQLite commit and documents checkout phases, uncertain-response recovery and where to resume.
+
+[Step 04 storage handoff](HANDOFF.md#04--durable-guest-carts-and-receipts) documents session ownership, immutable receipt snapshots, migration compatibility and deployment requirements. Run `node --test tests/storage.test.js` to verify a version-1 upgrade and a receipt reload from a fresh Node process using isolated stores.
 
 | Location | Responsibility |
 | --- | --- |

@@ -1,48 +1,26 @@
 export const PRODUCT = Object.freeze({
   name: 'TrailTurn',
   tagline: 'A route your dog can feel. And return to.',
-  unitPricePaise: 289900,
+  description: 'A low green floor toy with three broad cream nose paddles and a reward cup in front. Your dog follows the raised paddle through a changing sequence to release a measured portion.',
+  unitPricePaise: 149900,
   deliveryPaise: 4900,
   maxQuantity: 5,
   currency: 'INR',
   sku: 'TT-DRUM-01',
 });
 
-export const MIN_QUANTITY = 1;
-
-export function clampQuantity(value) {
-  const quantity = Number.parseInt(String(value), 10);
-  if (!Number.isFinite(quantity)) return MIN_QUANTITY;
-  return Math.min(PRODUCT.maxQuantity, Math.max(MIN_QUANTITY, quantity));
-}
-
-export function totalsFor(value) {
-  const quantity = clampQuantity(value);
+export function totalsFor(quantity) {
+  if (!Number.isSafeInteger(quantity) || quantity < 0 || quantity > PRODUCT.maxQuantity) {
+    throw new RangeError(`Basket quantity must be a whole number from 0 to ${PRODUCT.maxQuantity}.`);
+  }
   const subtotalPaise = PRODUCT.unitPricePaise * quantity;
-  const totalPaise = subtotalPaise + PRODUCT.deliveryPaise;
+  const deliveryPaise = quantity === 0 ? 0 : PRODUCT.deliveryPaise;
   return {
     quantity,
     unitPricePaise: PRODUCT.unitPricePaise,
-    deliveryPaise: PRODUCT.deliveryPaise,
+    deliveryPaise,
     subtotalPaise,
-    totalPaise,
+    totalPaise: subtotalPaise + deliveryPaise,
     currency: PRODUCT.currency,
   };
-}
-
-export function formatINR(paise) {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(paise / 100);
-}
-
-export function formatINRDecimal(paise) {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(paise / 100);
 }

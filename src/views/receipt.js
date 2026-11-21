@@ -1,4 +1,4 @@
-import { PRODUCT, formatINR } from '../pricing.js';
+import { formatINR } from './money.js';
 import { escapeHtml } from '../security.js';
 import { logoMark, page } from './layout.js';
 
@@ -15,6 +15,7 @@ function formatDate(iso) {
 }
 
 export function renderReceipt({ order }) {
+  const money = paise => formatINR(paise, order.currency);
   const customer = order.customer || {};
   const addressLines = [
     customer.address1,
@@ -67,17 +68,17 @@ export function renderReceipt({ order }) {
         <div class="receipt-item">
           <img src="/assets/toy-top.svg" alt="" width="112" height="112">
           <div class="receipt-item-copy">
-            <h2>TrailTurn</h2>
-            <p>Route card set included · ${escapeHtml(PRODUCT.sku)}</p>
+            <h2>${escapeHtml(order.productName)}</h2>
+            <p>Route card set included · ${escapeHtml(order.sku)}</p>
             <p class="receipt-item-note">One route held · four timed chances</p>
           </div>
-          <span class="receipt-item-price">${formatINR(order.unitPricePaise)}</span>
+          <span class="receipt-item-price">${money(order.unitPricePaise)}</span>
         </div>
 
         <dl class="receipt-totals">
-          <div><dt>Subtotal (${escapeHtml(order.quantity)} × ${formatINR(order.unitPricePaise)})</dt><dd>${formatINR(order.subtotalPaise)}</dd></div>
-          <div><dt>Delivery</dt><dd>${formatINR(order.deliveryPaise)}</dd></div>
-          <div class="receipt-total"><dt>Total</dt><dd>${formatINR(order.totalPaise)}</dd></div>
+          <div><dt>Subtotal (${escapeHtml(order.quantity)} × ${money(order.unitPricePaise)})</dt><dd>${money(order.subtotalPaise)}</dd></div>
+          <div><dt>Delivery</dt><dd>${money(order.deliveryPaise)}</dd></div>
+          <div class="receipt-total"><dt>Total</dt><dd>${money(order.totalPaise)}</dd></div>
         </dl>
 
         <div class="receipt-columns">
@@ -91,7 +92,7 @@ export function renderReceipt({ order }) {
           </section>
           <section class="receipt-note" aria-labelledby="receipt-note-title">
             <p class="eyebrow" id="receipt-note-title">The honest bit</p>
-            <p>This is a demo receipt. No payment was collected and no product will ship. The price, delivery fee, and five-unit limit are proposed demo decisions.</p>
+            <p>This is a demo receipt. No payment was collected and no product will ship. The total shown includes the item subtotal and delivery, with nothing further due.</p>
           </section>
         </div>
 

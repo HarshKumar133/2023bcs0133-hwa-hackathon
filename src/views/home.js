@@ -1,4 +1,5 @@
-import { PRODUCT, formatINR } from '../pricing.js';
+import { PRODUCT, totalsFor } from '../pricing.js';
+import { formatINR } from './money.js';
 import { escapeAttr, escapeHtml } from '../security.js';
 import { INDIAN_STATES } from '../validation.js';
 import { sectionLabel } from './layout.js';
@@ -97,7 +98,7 @@ function selectField({ id, name, label, value, error, help }) {
 function quantityStepper(quantity) {
   return `
     <div class="qty" role="group" aria-label="Quantity">
-      <button type="button" class="qty-button" data-qty-decrease aria-label="Decrease quantity" ${quantity <= 1 ? 'disabled' : ''}>−</button>
+      <button type="button" class="qty-button" data-qty-decrease aria-label="Decrease quantity" ${quantity === 0 ? 'disabled' : ''}>−</button>
       <span class="qty-value" data-qty-value aria-live="polite">${quantity}</span>
       <button type="button" class="qty-button" data-qty-increase aria-label="Increase quantity" ${quantity >= PRODUCT.maxQuantity ? 'disabled' : ''}>+</button>
     </div>
@@ -138,10 +139,9 @@ export function renderHome({
   values = {},
   notice = '',
   idempotencyKey,
-  cartQuantity = 1,
 }) {
-  const quantity = cart?.quantity || 1;
-  const totals = cart?.totals || { quantity: 1, subtotalPaise: PRODUCT.unitPricePaise, deliveryPaise: PRODUCT.deliveryPaise, totalPaise: PRODUCT.unitPricePaise + PRODUCT.deliveryPaise };
+  const quantity = cart?.quantity ?? 0;
+  const totals = cart?.totals ?? totalsFor(quantity);
   const cartId = cart?.id || '';
   const revision = cart?.revision || 0;
   const hasErrors = Object.keys(errors).length > 0;
@@ -152,8 +152,8 @@ export function renderHome({
     `data-cart-revision="${escapeAttr(revision)}"`,
     `data-csrf="${escapeAttr(csrfToken)}"`,
     `data-max-qty="${PRODUCT.maxQuantity}"`,
-    `data-unit-price="${PRODUCT.unitPricePaise}"`,
-    `data-delivery="${PRODUCT.deliveryPaise}"`,
+    `data-currency="${PRODUCT.currency}"`,
+    `data-totals="${escapeAttr(JSON.stringify(totals))}"`,
   ].join(' ');
 
   const body = `
@@ -162,12 +162,12 @@ export function renderHome({
         <div class="hero-copy">
           <p class="eyebrow reveal">The floor toy that holds its place</p>
           <h1 id="hero-title" class="reveal">A route your dog can <em>feel.</em><br>And return to.</h1>
-          <p class="hero-lead reveal">TrailTurn raises one paddle at a time. Your dog noses the route forward. Walk away, and the next step stays up — exactly where they left it.</p>
+          <p class="hero-lead reveal">${escapeHtml(PRODUCT.description)} Walk away, and the next step stays raised.</p>
           <div class="hero-buy reveal">
             <a class="button button--ink button--large" href="#demo">Try a route <span aria-hidden="true">→</span></a>
             <a class="button button--outline button--large" href="#buy">Buy TrailTurn</a>
           </div>
-          <p class="hero-price reveal"><strong>${formatINR(PRODUCT.unitPricePaise)}</strong> <span>+ ${formatINR(PRODUCT.deliveryPaise)} delivery</span> <span class="dot" aria-hidden="true">·</span> <span>${formatINR(PRODUCT.unitPricePaise + PRODUCT.deliveryPaise)} for one, delivered</span></p>
+          <p class="hero-price reveal"><strong>${formatINR(PRODUCT.unitPricePaise)}</strong> <span>+ ${formatINR(PRODUCT.deliveryPaise)} delivery</span> <span class="dot" aria-hidden="true">·</span> <span>${formatINR(totalsFor(1).totalPaise)} for one, delivered</span></p>
           <ul class="hero-facts reveal" aria-label="TrailTurn at a glance">
             <li><span>45</span> min window</li>
             <li><span>4</span> timed chances</li>
@@ -178,10 +178,10 @@ export function renderHome({
         <div class="hero-visual reveal">
           <div class="hero-plate">
             <div class="plate-grid" aria-hidden="true"></div>
-            <img class="hero-toy" src="/assets/toy-hero.svg" alt="Round birch drum with three numbered paddles. Paddle one stands above the other two." width="760" height="760">
+            <img class="hero-toy" src="/assets/toy-hero.svg" alt="Low green drum with three cream paddles and a front reward cup. Paddle one is raised." width="760" height="760">
             <span class="annotation annotation--a"><span class="annotation-dot" aria-hidden="true"></span>Raised paddle</span>
             <span class="annotation annotation--b"><span class="annotation-dot" aria-hidden="true"></span>Route diagram</span>
-            <span class="annotation annotation--c"><span class="annotation-dot" aria-hidden="true"></span>45-min window</span>
+            <span class="annotation annotation--c"><span class="annotation-dot" aria-hidden="true"></span>Reward cup</span>
             <div class="route-chip">
               <span class="route-chip-label">Route A</span>
               <span class="route-chip-name">Long way</span>
@@ -190,7 +190,7 @@ export function renderHome({
           </div>
           <div class="hero-caption">
             <span>Concept study 01</span>
-            <span>Birch ply · ABS paddles · brass hub</span>
+            <span>Moss green · cream paddles · front cup</span>
           </div>
         </div>
       </section>
@@ -286,7 +286,7 @@ export function renderHome({
             <p>Set the route card under the clear top. The dog works the raised paddle; the drum indexes the route. The diagram stays visible during setup, so the path is a shared plan rather than a hidden trick.</p>
             <dl class="spec-list">
               <div><dt>Footprint</dt><dd>34 cm across · 11 cm tall · 2.1 kg</dd></div>
-              <div><dt>Proposed materials</dt><dd>Birch ply drum · ABS paddles · brass hub</dd></div>
+              <div><dt>Finish</dt><dd>Moss-green body · broad cream paddles · front reward cup</dd></div>
               <div><dt>Route</dt><dd>Three paddles · four timed chances · one held step</dd></div>
               <div><dt>Care</dt><dd>Wipe-clean top · supervised floor play · not a chew toy</dd></div>
             </dl>
@@ -357,7 +357,7 @@ export function renderHome({
             <h3 class="faq-title">The questions we'd ask before buying</h3>
             <details>
               <summary>Is TrailTurn a treat dispenser?</summary>
-              <p>No. It is a route toy. The owner sets the route and the portions; the demo focuses on the held route and the timed opportunities. Portion handling is a prototype question.</p>
+              <p>The proposed toy releases a measured portion into the front cup when your dog follows the raised paddle. A missed slot never stacks extra portions. The mechanism still needs physical testing.</p>
             </details>
             <details>
               <summary>What happens if my dog walks away?</summary>
@@ -411,7 +411,9 @@ export function renderHome({
               <div class="demo-stage">
                 <div class="demo-toy">
                   <svg class="demo-paths" viewBox="0 0 400 400" aria-hidden="true">
-                    <circle cx="200" cy="200" r="168" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.28"/>
+                    <circle cx="200" cy="200" r="168" fill="#475f4c" stroke="#a4b896" stroke-width="1.2"/>
+                    <ellipse cx="200" cy="354" rx="39" ry="20" fill="#acbf99" stroke="#263b30" stroke-width="2"/>
+                    <ellipse cx="200" cy="354" rx="31" ry="14" fill="#304b39"/>
                     <circle cx="200" cy="200" r="118" fill="none" stroke="currentColor" stroke-width="1" opacity="0.18" stroke-dasharray="2 7"/>
                     <path data-segment="long-0" d="M200 96 L304 272" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 8" opacity="0.45"/>
                     <path data-segment="long-1" d="M304 272 L96 272" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 8" opacity="0.45"/>
@@ -529,8 +531,17 @@ export function renderHome({
             ${errorSummary(errors)}
             ${notice ? `<div class="notice notice--warn" role="status">${escapeHtml(notice)}</div>` : ''}
             <div class="notice notice--warn" data-cart-notice hidden role="status" tabindex="-1"></div>
+            <noscript>
+              <form method="post" action="/cart">
+                <input type="hidden" name="csrf" value="${escapeAttr(csrfToken)}">
+                <input type="hidden" name="cartId" value="${escapeAttr(cartId)}">
+                <input type="hidden" name="revision" value="${revision}">
+                <label>Basket quantity <select name="quantity">${Array.from({length: PRODUCT.maxQuantity + 1}, (_, n) => `<option${n === quantity ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+                <button class="button button--outline" type="submit">Update basket</button>
+              </form>
+            </noscript>
 
-            <form id="checkout-form" class="checkout-form" method="post" action="/checkout" novalidate data-checkout-form>
+            <form id="checkout-form" class="checkout-form" method="post" action="/checkout" novalidate data-checkout-form data-checkout-phase="${hasErrors || notice ? 'recoverable-failure' : 'editing'}">
               <input type="hidden" name="cartId" value="${escapeAttr(cartId)}" data-cart-id-input>
               <input type="hidden" name="revision" value="${escapeAttr(revision)}" data-cart-revision-input>
               <input type="hidden" name="idempotencyKey" value="${escapeAttr(idempotencyKey)}" data-idempotency-input>
@@ -551,7 +562,8 @@ export function renderHome({
                   <div><dt>Delivery</dt><dd data-delivery>${formatINR(totals.deliveryPaise)}</dd></div>
                   <div class="price-total"><dt>Total</dt><dd data-total>${formatINR(totals.totalPaise)}</dd></div>
                 </dl>
-                <p class="order-note">Inclusive of all taxes. Delivery is shown before checkout and checked again on the server.</p>
+                 <p class="order-note" data-empty-basket ${quantity ? 'hidden' : ''}>Your basket is empty. Add a TrailTurn to check out.</p>
+                 <p class="order-note">Total includes all amounts due. Delivery is charged once per nonempty order; limit ${PRODUCT.maxQuantity} units.</p>
               </div>
 
               <fieldset class="form-section">
@@ -598,7 +610,7 @@ export function renderHome({
               </fieldset>
 
               <div class="checkout-commit">
-                <button type="submit" class="button button--ink button--large button--full" data-checkout-submit>
+                <button type="submit" class="button button--ink button--large button--full" data-checkout-submit ${quantity ? '' : 'disabled'}>
                   <span data-checkout-submit-label>Place demo order · ${formatINR(totals.totalPaise)}</span>
                   <span aria-hidden="true">→</span>
                 </button>

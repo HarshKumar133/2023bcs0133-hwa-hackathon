@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import {
   DB_PATH,
   HOST,
@@ -31,6 +31,7 @@ import {
   newCsrfToken,
   newIdempotencyKey,
   parseCookies,
+  randomToken,
   serializeCookie,
   signReceipt,
   timingSafeEqualText,
@@ -270,18 +271,31 @@ function parseIfMatch(req) {
 function draftCart() {
   return {
     id: null,
-    quantity: 1,
+    quantity: 0,
     revision: 0,
     status: 'draft',
-    totals: totalsFor(1),
+    totals: totalsFor(0),
   };
 }
 
-function cartFromRequest(req, res, store) {
+// Only the browser gets the bearer token; SQLite stores its SHA-256 digest.
+function guestId(req, issueTo = null) {
+  let token = parseCookies(req.headers.cookie).tt_guest;
+  if (!/^[A-Za-z0-9_-]{43}$/.test(token || '')) {
+    if (!issueTo) return null;
+    token = randomToken();
+    appendCookie(issueTo, serializeCookie('tt_guest', token, {
+      maxAge: SESSION_AGE_SECONDS, secure: isSecureRequestForCookies(req),
+    }));
+  }
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function cartFromRequest(req, res, store, owner = guestId(req)) {
   const cookies = parseCookies(req.headers.cookie);
   const id = cookies[CART_COOKIE];
   if (!id) return null;
-  const cart = store.getCart(id);
+  const cart = store.getCart(id, owner);
   if (!cart || cart.status !== 'active') {
     clearCartCookie(req, res);
     return null;
@@ -346,9 +360,12 @@ function renderHomePage(req, res, store, {
   idempotencyKey = '',
 } = {}) {
   const csrfToken = ensureCsrf(req, res);
-  let cart = cartFromRequest(req, res, store);
+  const owner = guestId(req, res);
+  const previousId = parseCookies(req.headers.cookie)[CART_COOKIE];
+  if (previousId) store.bindLegacyCart(previousId, owner);
+  let cart = cartFromRequest(req, res, store, owner);
   if (!cart) {
-    cart = store.createCart();
+    cart = store.createCart(owner);
     cartCookie(req, res, cart.id);
   }
   const key = idempotencyFrom(idempotencyKey) || newIdempotencyKey();
@@ -359,7 +376,6 @@ function renderHomePage(req, res, store, {
     values,
     notice,
     idempotencyKey: key,
-    cartQuantity: cart?.quantity || 1,
   });
   const html = page({
     title: 'TrailTurn — a route your dog can feel',
@@ -368,7 +384,7 @@ function renderHomePage(req, res, store, {
     body: view.body,
     bodyClass: view.bodyClass,
     bodyData: view.bodyData,
-    cartQuantity: cart?.quantity || 1,
+    cartQuantity: cart.quantity,
     current: 'toy',
   });
   sendHtml(res, status, html);
@@ -388,6 +404,7 @@ function renderLookupPage(req, res, store, { status = 200, values = {}, errors =
 
 function storeErrorToApi(error) {
   if (error instanceof StoreError) {
+    if (error.code === 'EMPTY_CART') return { status: 422, payload: { code: 'empty_cart', message: error.message } };
     if (error.code === 'CART_CONFLICT') {
       return {
         status: 409,
@@ -437,6 +454,7 @@ function storeErrorToApi(error) {
 
 function storeErrorToNotice(error) {
   if (!(error instanceof StoreError)) return '';
+  if (error.code === 'EMPTY_CART') return error.message;
   if (error.code === 'CART_CONFLICT') {
     return 'This cart changed somewhere else. We refreshed the total. Review it and place the order again.';
   }
@@ -591,10 +609,26 @@ export function createApp({
         return;
       }
 
+      if (path === '/cart' && method === 'POST') {
+        requireOrigin(req);
+        const form = await parseFormBody(req);
+        verifyCsrf(req, form.csrf);
+        const check = validateQuantity(form.quantity);
+        const cart = cartFromRequest(req, res, store);
+        if (!cart || cart.id !== form.cartId || cart.revision !== Number(form.revision) || !check.ok) {
+          renderHomePage(req, res, store, { status: check.ok ? 409 : 422, notice: check.message || 'Review the current basket quantity and try again.' });
+          return;
+        }
+        store.updateCartQuantity({ cartId: cart.id, guestId: guestId(req), expectedRevision: cart.revision, quantity: check.quantity });
+        redirect(res, '/#buy');
+        return;
+      }
+
       if (path === '/api/cart' && method === 'PUT') {
         requireOrigin(req);
         const body = await parseJsonBody(req);
         verifyCsrf(req, req.headers['x-csrf-token'] || body.csrf);
+        if (!guestId(req)) throw new HttpError(403, 'session_required', 'Reload the shop to open your basket.');
         const quantityCheck = validateQuantity(body.quantity);
         if (!quantityCheck.ok) {
           sendJson(res, 422, { code: 'invalid_quantity', errors: { quantity: quantityCheck.message } });
@@ -611,7 +645,7 @@ export function createApp({
         const cookieCartId = cookies[CART_COOKIE] || null;
 
         if (cookieCartId && expected.cartId && expected.cartId !== 'new' && expected.cartId !== cookieCartId) {
-          const current = store.getCart(cookieCartId);
+          const current = store.getCart(cookieCartId, guestId(req));
           sendJson(
             res,
             409,
@@ -640,6 +674,7 @@ export function createApp({
         try {
           const cart = store.updateCartQuantity({
             cartId: cookieCartId,
+            guestId: guestId(req),
             expectedRevision: expected.revision,
             quantity: quantityCheck.quantity,
           });
@@ -651,6 +686,22 @@ export function createApp({
           if (!mapped) throw error;
           sendJson(res, mapped.status, mapped.payload, mapped.payload.etag ? { ETag: mapped.payload.etag } : {});
         }
+        return;
+      }
+
+      if (path === '/api/orders/status' && method === 'POST') {
+        requireOrigin(req);
+        checkRateLimit(lookupLimiter, req);
+        const body = await parseJsonBody(req);
+        verifyCsrf(req, req.headers['x-csrf-token']);
+        const key = idempotencyFrom(body.idempotencyKey);
+        if (!key || typeof body.cartId !== 'string' || !body.cartId) {
+          throw new HttpError(400, 'invalid_attempt', 'A checkout attempt is required.');
+        }
+        const order = store.getOrderByIdempotencyKey(guestKey(req, key), guestId(req));
+        // The cart cookie may already have been cleared by a successful commit.
+        // A matching guest-scoped attempt and original cart authorize recovery.
+        sendJson(res, 200, { order: order && order.cartId === body.cartId ? orderResponse(order) : null });
         return;
       }
 
@@ -690,7 +741,7 @@ export function createApp({
         const cookieCartId = cookies[CART_COOKIE] || null;
         const requestedCartId = body.cartId ? String(body.cartId) : null;
         const key = guestKey(req, rawKey);
-        const replay = requestedCartId ? store.getOrderByIdempotencyKey(key) : null;
+        const replay = requestedCartId ? store.getOrderByIdempotencyKey(key, guestId(req)) : null;
         const authorizedReplay = !cookieCartId && replay && replay.cartId === requestedCartId;
 
         // A cart belongs to the browser that holds its HttpOnly cookie. A request
@@ -698,7 +749,7 @@ export function createApp({
         // exception is an idempotent replay: the unguessable request key proves
         // that this caller already placed the order.
         if (requestedCartId && requestedCartId !== cookieCartId && !authorizedReplay) {
-          const current = cookieCartId ? store.getCart(cookieCartId) : null;
+          const current = cookieCartId ? store.getCart(cookieCartId, guestId(req)) : null;
           sendJson(
             res,
             409,
@@ -726,6 +777,7 @@ export function createApp({
         try {
           const result = store.placeOrder({
             cartId,
+            guestId: guestId(req),
             expectedRevision: expected.revision,
             idempotencyKey: key,
             customer: customerCheck.values,
@@ -768,7 +820,7 @@ export function createApp({
         const cookieCartId = cookies[CART_COOKIE] || null;
         const requestedCartId = String(form.cartId || '') || null;
 
-        const replay = requestedCartId && !cookieCartId ? store.getOrderByIdempotencyKey(key) : null;
+        const replay = requestedCartId && !cookieCartId ? store.getOrderByIdempotencyKey(key, guestId(req)) : null;
         if (requestedCartId && requestedCartId !== cookieCartId && replay?.cartId !== requestedCartId) {
           renderHomePage(req, res, store, {
             status: 409,
@@ -785,6 +837,7 @@ export function createApp({
         try {
           const result = store.placeOrder({
             cartId,
+            guestId: guestId(req),
             expectedRevision: Number.isInteger(expectedRevision) ? expectedRevision : 0,
             idempotencyKey: key,
             customer: customerCheck.values,

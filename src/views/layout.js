@@ -1,4 +1,5 @@
-import { PRODUCT, formatINR } from '../pricing.js';
+import { PRODUCT } from '../pricing.js';
+import { formatINR } from './money.js';
 import { escapeAttr, escapeHtml } from '../security.js';
 
 export function logoMark(className = 'brand-mark') {
@@ -17,7 +18,7 @@ export function logoMark(className = 'brand-mark') {
   `;
 }
 
-export function siteHeader({ cartQuantity = 1, current = '' } = {}) {
+export function siteHeader({ cartQuantity = 0, current = '' } = {}) {
   return `
     <a class="skip-link" href="#main">Skip to content</a>
     <div class="announcement">
@@ -77,7 +78,7 @@ export function siteFooter() {
         </div>
         <div class="footer-note">
           <p class="eyebrow">The honest bit</p>
-          <p>This is a concept shop. No payment is collected and no product ships. Price, delivery, the five-unit limit, route names, and the missed-round policy are demo decisions. Physical use, dog re-engagement, mechanical reliability, and unsupervised safety still need testing.</p>
+          <p>This is a concept shop. No payment is collected and no product ships. Price, delivery, the ${PRODUCT.maxQuantity}-unit limit, route names, and the missed-round policy are demo decisions. Physical use, dog re-engagement, mechanical reliability, and unsupervised safety still need testing.</p>
         </div>
       </div>
       <div class="shell footer-bottom">
@@ -97,7 +98,7 @@ export function page({
   noindex = false,
   header = true,
   footer = true,
-  cartQuantity = 1,
+  cartQuantity = 0,
   current = '',
 }) {
   return `<!doctype html>

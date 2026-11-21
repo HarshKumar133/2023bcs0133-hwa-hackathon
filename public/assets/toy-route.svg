@@ -3,13 +3,13 @@
   <desc id="routeDesc">A top view of the TrailTurn drum showing the Long way route in green and the Switchback route in terracotta, with the first paddle raised.</desc>
   <defs>
     <radialGradient id="diagramTop" cx="36%" cy="28%" r="82%">
-      <stop offset="0" stop-color="#f5e6c9"/>
-      <stop offset="0.55" stop-color="#e4c99f"/>
-      <stop offset="1" stop-color="#caa574"/>
+      <stop offset="0" stop-color="#adc59a"/>
+      <stop offset="0.55" stop-color="#83a27b"/>
+      <stop offset="1" stop-color="#638166"/>
     </radialGradient>
     <linearGradient id="diagramPaddle" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#bfcdb5"/>
-      <stop offset="1" stop-color="#8fa383"/>
+      <stop offset="0" stop-color="#fff6de"/>
+      <stop offset="1" stop-color="#e6d6b4"/>
     </linearGradient>
     <linearGradient id="diagramPaddleSide" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#708668"/>
@@ -89,6 +89,10 @@
     <text x="0" y="-5" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#2f4a38">1</text>
   </g>
 
+  <g transform="translate(600 716)">
+    <ellipse rx="63" ry="37" fill="#acbf99" stroke="#2b3629" stroke-width="2"/>
+    <ellipse rx="51" ry="28" fill="#3e5844"/>
+  </g>
   <g transform="translate(600 450)">
     <circle cx="0" cy="0" r="56" fill="url(#diagramBrass)" stroke="#2b241b" stroke-width="2"/>
     <circle cx="0" cy="0" r="43" fill="none" stroke="#7d5b24" stroke-width="1" opacity="0.55"/>

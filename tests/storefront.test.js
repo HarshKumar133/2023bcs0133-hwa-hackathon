@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createApp } from '../server.js';
 import { totalsFor } from '../src/pricing.js';
+import { formatINR } from '../src/views/money.js';
 import { validateCustomer, validateQuantity } from '../src/validation.js';
 
 const customer = {
@@ -36,13 +37,21 @@ async function guest(app) {
   return { cartId, cookie, csrf, json, form, etag: `"cart-${cartId}-1"` };
 }
 
-test('Indian address validation and a single flat delivery fee', () => {
-  assert.equal(totalsFor(1).totalPaise, 294800);
-  assert.equal(totalsFor(5).totalPaise, 1454400);
+test('server prices an empty basket and charges delivery once for one, two or five units', () => {
+  for (const [qty, subtotal, delivery, total, display] of [
+    [0, 0, 0, 0, '₹0'], [1, 149900, 4900, 154800, '₹1,548'],
+    [2, 299800, 4900, 304700, '₹3,047'], [5, 749500, 4900, 754400, '₹7,544'],
+  ]) {
+    const quote = totalsFor(qty);
+    assert.deepEqual([quote.subtotalPaise, quote.deliveryPaise, quote.totalPaise, formatINR(quote.totalPaise)], [subtotal, delivery, total, display]);
+  }
+});
+
+test('Indian address and basket quantity validation', () => {
   assert.equal(validateCustomer(customer).values.phone, '9876543210');
   for (const patch of [{ phone: '98765432101' }, { pin: '4110019' }, { pin: '011001' }, { state: 'Unknown' }])
     assert.equal(validateCustomer({ ...customer, ...patch }).ok, false);
-  for (const q of [0, 6, 1.5, '2abc', null]) assert.equal(validateQuantity(q).ok, false);
+  for (const q of [-1, 6, 1.5, '2abc', null, '', ' ']) assert.equal(validateQuantity(q).ok, false);
 });
 
 test('cart writes require revision, session token and same origin', async t => {
@@ -72,8 +81,9 @@ test('concurrent checkout, lost response, clean receipt reload and restart', asy
   assert.deepEqual(responses.map(r => r.status).sort(), [200, 201]);
   const [a, b] = await Promise.all(responses.map(r => r.json()));
   assert.equal(a.order.publicId, b.order.publicId);
-  assert.equal(a.order.totalPaise, 874600);
-  const retry = await g.json('/api/orders', body, etag, { cookie: `tt_csrf=${g.csrf}` });
+  assert.equal(a.order.totalPaise, 454600);
+  const sessionCookie = g.cookie.split('; ').filter(c => !c.startsWith('tt_cart=')).join('; ');
+  const retry = await g.json('/api/orders', body, etag, { cookie: sessionCookie });
   assert.equal((await retry.json()).order.publicId, a.order.publicId);
   assert.equal(app.db.prepare('SELECT COUNT(*) AS n FROM orders').get().n, 1);
   await app.close();
@@ -91,6 +101,12 @@ test('concurrent checkout, lost response, clean receipt reload and restart', asy
     assert.match(await r.text(), /Demo flat &lt;B&gt; &amp; unit 4/);
   }
   const other = await guest(app);
+  const attempt = { cartId: body.cartId, idempotencyKey: body.idempotencyKey };
+  const status = await other.json('/api/orders/status', attempt, null, { cookie: sessionCookie, 'x-csrf-token': g.csrf });
+  assert.equal((await status.json()).order.publicId, a.order.publicId);
+  const separateSession = await other.json('/api/orders/status', attempt);
+  assert.deepEqual(await separateSession.json(), { order: null });
+  assert.equal(app.db.prepare('SELECT COUNT(*) AS n FROM orders').get().n, 1);
   assert.equal((await other.form('/receipt/lookup', { orderRef: a.order.publicId, email: 'other@example.test' })).status, 404);
   const lookup = await other.form('/receipt/lookup', { orderRef: a.order.publicId, email: customer.email });
   assert.equal(lookup.headers.get('location'), clean);
@@ -99,14 +115,34 @@ test('concurrent checkout, lost response, clean receipt reload and restart', asy
 test('ordinary HTML checkout works for one item and preserves invalid input', async t => {
   const app = await launch(); t.after(app.close);
   const g = await guest(app);
-  const fields = { ...customer, cartId: g.cartId, revision: 1, idempotencyKey: randomUUID() };
+  const updated = await g.form('/cart', { cartId: g.cartId, revision: 1, quantity: '1' });
+  assert.equal(updated.status, 303);
+  const fields = { ...customer, cartId: g.cartId, revision: 2, idempotencyKey: randomUUID() };
   const invalid = await g.form('/checkout', { ...fields, pin: '' });
   assert.equal(invalid.status, 422);
   assert.match(await invalid.text(), /value="Demo flat &lt;B&gt; &amp; unit 4"/);
   const r = await g.form('/checkout', fields);
   assert.equal(r.status, 303);
   assert.match(r.headers.get('location'), /^\/receipt\/TT-/);
-  assert.equal(app.db.prepare('SELECT total_paise FROM orders').get().total_paise, 294800);
+  assert.equal(app.db.prepare('SELECT total_paise FROM orders').get().total_paise, 154800);
+});
+
+test('removing the last unit persists zero and neither checkout can commit it', async t => {
+  const app = await launch(); t.after(app.close);
+  const g = await guest(app);
+  const added = await g.json('/api/cart', { quantity: 1 }, g.etag);
+  const empty = await g.json('/api/cart', { quantity: 0 }, added.headers.get('etag'));
+  const { cart, etag } = await empty.json();
+  assert.equal(cart.totals.totalPaise, 0);
+  const html = await (await app.request('/', { headers: { cookie: g.cookie } })).text();
+  assert.match(html, /data-total>₹0</);
+  assert.match(html, /data-checkout-submit disabled/);
+  const idempotencyKey = randomUUID();
+  const result = await g.json('/api/orders', { customer, cartId: cart.id, idempotencyKey }, etag);
+  assert.equal(result.status, 422);
+  assert.equal((await result.json()).code, 'empty_cart');
+  assert.equal((await g.form('/checkout', { ...customer, cartId: cart.id, revision: cart.revision, idempotencyKey })).status, 422);
+  assert.equal(app.db.prepare('SELECT COUNT(*) AS n FROM orders').get().n, 0);
 });
 
 test('lookup rate limit sends a retry time', async t => {

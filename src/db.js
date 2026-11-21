@@ -20,35 +20,39 @@ export function openDatabase(dbPath) {
   db.exec('PRAGMA journal_mode = WAL');
   db.exec('PRAGMA foreign_keys = ON');
   db.exec('PRAGMA busy_timeout = 5000');
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS carts (
-      id TEXT PRIMARY KEY,
-      quantity INTEGER NOT NULL CHECK (quantity BETWEEN 1 AND ${PRODUCT.maxQuantity}),
-      revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1),
-      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed')),
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS orders (
-      id TEXT PRIMARY KEY,
-      public_id TEXT NOT NULL UNIQUE,
-      cart_id TEXT NOT NULL UNIQUE REFERENCES carts(id),
-      idempotency_key TEXT NOT NULL UNIQUE,
-      quantity INTEGER NOT NULL CHECK (quantity BETWEEN 1 AND ${PRODUCT.maxQuantity}),
-      unit_price_paise INTEGER NOT NULL,
-      delivery_paise INTEGER NOT NULL,
-      subtotal_paise INTEGER NOT NULL,
-      total_paise INTEGER NOT NULL,
-      customer_json TEXT NOT NULL,
-      email_normalized TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'reserved',
-      created_at TEXT NOT NULL
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_orders_lookup ON orders(public_id, email_normalized);
-    CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
-  `);
+  // SQLite cannot alter a CHECK constraint. Copy the original rows, including
+  // receipt prices, within one transaction; then install the new constraints.
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const version = db.prepare('PRAGMA user_version').get().user_version;
+    if (version > 2) throw new Error(`Unsupported TrailTurn database version ${version}`);
+    if (version === 0) {
+      const existing = db.prepare("SELECT 1 FROM sqlite_schema WHERE name='carts' AND type='table'").get();
+      if (existing) db.exec(`
+        CREATE TEMP TABLE old_carts AS SELECT * FROM carts;
+        CREATE TEMP TABLE old_orders AS SELECT * FROM orders;
+        DROP TABLE orders;
+        DROP TABLE carts;
+      `);
+      db.exec(fs.readFileSync(new URL('./migrations/001-basket.sql', import.meta.url), 'utf8'));
+      if (existing) db.exec(`
+        INSERT INTO carts SELECT * FROM old_carts;
+        INSERT INTO orders SELECT * FROM old_orders;
+        DROP TABLE old_orders;
+        DROP TABLE old_carts;
+      `);
+      db.exec('PRAGMA user_version = 1');
+    }
+    if (version < 2) {
+      db.exec(fs.readFileSync(new URL('./migrations/002-guest-order-snapshot.sql', import.meta.url), 'utf8'));
+      db.exec('PRAGMA user_version = 2');
+    }
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    db.close();
+    throw error;
+  }
   return db;
 }
 
@@ -78,6 +82,9 @@ function orderRowToView(row) {
     publicId: row.public_id,
     cartId: row.cart_id,
     idempotencyKey: row.idempotency_key,
+    sku: row.sku,
+    productName: row.product_name,
+    currency: row.currency,
     quantity: row.quantity,
     unitPricePaise: row.unit_price_paise,
     deliveryPaise: row.delivery_paise,
@@ -92,10 +99,11 @@ function orderRowToView(row) {
 
 export function createStore(db) {
   const statements = {
-    getCart: db.prepare('SELECT * FROM carts WHERE id = ?'),
+    getCart: db.prepare('SELECT * FROM carts WHERE id = ? AND guest_id = ?'),
+    bindLegacyCart: db.prepare("UPDATE carts SET guest_id = ? WHERE id = ? AND guest_id IS NULL AND status = 'active'"),
     insertCart: db.prepare(`
-      INSERT INTO carts (id, quantity, revision, status, created_at, updated_at)
-      VALUES (?, ?, 1, 'active', ?, ?)
+      INSERT INTO carts (id, guest_id, quantity, revision, status, created_at, updated_at)
+      VALUES (?, ?, ?, 1, 'active', ?, ?)
     `),
     updateCart: db.prepare(`
       UPDATE carts
@@ -107,14 +115,15 @@ export function createStore(db) {
     `),
     getOrderByPublicId: db.prepare('SELECT * FROM orders WHERE public_id = ?'),
     getOrderByCartId: db.prepare('SELECT * FROM orders WHERE cart_id = ?'),
-    getOrderByKey: db.prepare('SELECT * FROM orders WHERE idempotency_key = ?'),
+    getOrderByKey: db.prepare(`SELECT o.* FROM orders o JOIN carts c ON c.id = o.cart_id
+      WHERE o.idempotency_key = ? AND (c.guest_id = ? OR c.guest_id IS NULL)`),
     findOrderForLookup: db.prepare('SELECT * FROM orders WHERE public_id = ? AND email_normalized = ?'),
     insertOrder: db.prepare(`
       INSERT INTO orders (
         id, public_id, cart_id, idempotency_key, quantity, unit_price_paise,
         delivery_paise, subtotal_paise, total_paise, customer_json,
-        email_normalized, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'reserved', ?)
+        email_normalized, status, created_at, sku, product_name, currency
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'reserved', ?, ?, ?, ?)
     `),
     opsSearch: db.prepare(`
       SELECT public_id, cart_id, idempotency_key, quantity, total_paise, status, created_at
@@ -139,25 +148,26 @@ export function createStore(db) {
     }
   }
 
-  function createCart(quantity = 1, now = new Date().toISOString()) {
+  function createCart(guestId, quantity = 0, now = new Date().toISOString()) {
+    totalsFor(quantity);
     const id = crypto.randomUUID();
-    statements.insertCart.run(id, quantity, now, now);
-    return cartRowToView(statements.getCart.get(id));
+    statements.insertCart.run(id, guestId, quantity, now, now);
+    return getCart(id, guestId);
   }
 
-  function getCart(id) {
-    return cartRowToView(statements.getCart.get(id));
+  function getCart(id, guestId) {
+    return cartRowToView(statements.getCart.get(id, guestId));
   }
 
-  function updateCartQuantity({ cartId, expectedRevision, quantity, now = new Date().toISOString() }) {
+  function updateCartQuantity({ cartId, guestId, expectedRevision, quantity, now = new Date().toISOString() }) {
     return transaction(() => {
-      let cart = cartId ? statements.getCart.get(cartId) : null;
+      let cart = cartId ? statements.getCart.get(cartId, guestId) : null;
 
       if (!cart) {
         if (cartId || expectedRevision !== 0) {
           throw new StoreError('CART_NOT_FOUND', 'That cart could not be found.');
         }
-        return createCart(quantity, now);
+        return createCart(guestId, quantity, now);
       }
 
       if (cart.status !== 'active') {
@@ -173,14 +183,14 @@ export function createStore(db) {
       }
 
       statements.updateCart.run(quantity, now, cart.id, expectedRevision);
-      cart = statements.getCart.get(cart.id);
+      cart = statements.getCart.get(cart.id, guestId);
       return cartRowToView(cart);
     });
   }
 
-  function placeOrder({ cartId, expectedRevision, idempotencyKey, customer, now = new Date().toISOString() }) {
+  function placeOrder({ cartId, guestId, expectedRevision, idempotencyKey, customer, now = new Date().toISOString() }) {
     return transaction(() => {
-      const replay = statements.getOrderByKey.get(idempotencyKey);
+      const replay = statements.getOrderByKey.get(idempotencyKey, guestId);
       if (replay) {
         if (cartId && replay.cart_id !== cartId) {
           throw new StoreError('IDEMPOTENCY_CONFLICT', 'That request key was already used for another cart.');
@@ -188,7 +198,7 @@ export function createStore(db) {
         return { order: orderRowToView(replay), replay: true };
       }
 
-      let cart = cartId ? statements.getCart.get(cartId) : null;
+      const cart = cartId ? statements.getCart.get(cartId, guestId) : null;
 
       if (!cart) {
         if (cartId) {
@@ -199,7 +209,7 @@ export function createStore(db) {
             cart: null,
           });
         }
-        cart = statements.getCart.get(createCart(1, now).id);
+        throw new StoreError('EMPTY_CART', 'Add a TrailTurn to your basket before checkout.');
       }
 
       if (cart.status !== 'active') {
@@ -217,6 +227,7 @@ export function createStore(db) {
         });
       }
 
+      if (cart.quantity === 0) throw new StoreError('EMPTY_CART', 'Add a TrailTurn to your basket before checkout.');
       const totals = totalsFor(cart.quantity);
       const orderId = crypto.randomUUID();
       let publicId = generatePublicId();
@@ -237,6 +248,9 @@ export function createStore(db) {
             JSON.stringify(customer),
             customer.email,
             now,
+            PRODUCT.sku,
+            PRODUCT.name,
+            totals.currency,
           );
           inserted = true;
         } catch (error) {
@@ -262,8 +276,8 @@ export function createStore(db) {
     return orderRowToView(statements.getOrderByPublicId.get(publicId));
   }
 
-  function getOrderByIdempotencyKey(idempotencyKey) {
-    return orderRowToView(statements.getOrderByKey.get(idempotencyKey));
+  function getOrderByIdempotencyKey(idempotencyKey, guestId) {
+    return orderRowToView(statements.getOrderByKey.get(idempotencyKey, guestId));
   }
 
   function findOrderForLookup(publicId, emailNormalized) {
@@ -292,6 +306,7 @@ export function createStore(db) {
     db,
     createCart,
     getCart,
+    bindLegacyCart: (id, guestId) => statements.bindLegacyCart.run(guestId, id),
     updateCartQuantity,
     placeOrder,
     getOrderByPublicId,

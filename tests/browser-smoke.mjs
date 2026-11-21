@@ -41,22 +41,43 @@ try {
   await p.setViewportSize({ width: 390, height: 844 });
   const tab = await context.newPage();
   await tab.goto('/');
+  assert.equal(await p.locator('[data-total]').textContent(), '₹0');
+  assert.ok(await p.locator('[data-checkout-submit]').isDisabled());
   await click('qty-increase');
-  await p.waitForFunction(() => document.querySelector('[data-total]').textContent === '₹5,847');
+  await p.waitForFunction(() => document.querySelector('[data-total]').textContent === '₹1,548');
+  await click('qty-increase');
+  await p.waitForFunction(() => document.querySelector('[data-total]').textContent === '₹3,047');
   await tab.waitForFunction(() => document.querySelector('[data-qty-value]').textContent === '2');
   await tab.close();
   await click('checkout-submit');
   await p.locator('#checkout-errors').waitFor();
+  assert.equal(await p.locator('form[data-checkout-form]').getAttribute('data-checkout-phase'), 'recoverable-failure');
   assert.equal(await p.locator('#checkout-errors').evaluate(el => el === document.activeElement), true);
   for (const [name, value] of Object.entries({ fullName: 'Demo Guest', email: 'guest@example.test',
     address1: 'Unit 4, Demo Road', phone: '9876543210', city: 'Pune', pin: '411001' })) {
     await p.locator(`#field-${name}`).fill(value);
   }
   await p.locator('#field-state').selectOption('Maharashtra');
+  assert.equal(await p.locator('form[data-checkout-form]').getAttribute('data-checkout-phase'), 'editing');
+  // The write really commits, but the tab loses its response. Recovery must
+  // survive a reload and find this receipt without submitting another order.
+  let committed;
+  await p.route('**/api/orders', async route => {
+    assert.equal(await p.locator('form[data-checkout-form]').getAttribute('data-checkout-phase'), 'submitting');
+    const result = await route.fetch();
+    assert.equal(result.status(), 201);
+    committed = (await result.json()).order.publicId;
+    await route.abort();
+  });
+  await click('checkout-submit');
+  await p.getByRole('button', { name: 'Check previous order' }).waitFor();
+  await p.reload();
+  assert.equal(await p.getByRole('button', { name: 'Check previous order' }).count(), 1);
   await click('checkout-submit');
   await p.waitForURL(/\/receipt\/TT-[A-Z0-9]+$/);
+  assert.equal(new URL(p.url()).pathname, `/receipt/${committed}`);
   await p.reload();
-  assert.equal(await p.locator('.receipt-total dd').textContent(), '₹5,847');
+  assert.equal(await p.locator('.receipt-total dd').textContent(), '₹3,047');
   assert.deepEqual(errors, []);
   console.log('Passed: responsive layout, gallery, both routes, held step, last slot, two tabs, checkout and receipt reload.');
 } finally {

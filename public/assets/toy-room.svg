@@ -3,18 +3,18 @@
   <desc id="roomDesc">A line-drawn living room with a warm rug, a window, a plant, and a dog lying nearby. The TrailTurn drum is the only coloured object, with its first paddle raised.</desc>
   <defs>
     <radialGradient id="roomTop" cx="36%" cy="28%" r="82%">
-      <stop offset="0" stop-color="#f5e6c9"/>
-      <stop offset="0.55" stop-color="#e4c99f"/>
-      <stop offset="1" stop-color="#caa574"/>
+      <stop offset="0" stop-color="#adc59a"/>
+      <stop offset="0.55" stop-color="#83a27b"/>
+      <stop offset="1" stop-color="#638166"/>
     </radialGradient>
     <linearGradient id="roomSide" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ca9255"/>
-      <stop offset="0.55" stop-color="#b97a3f"/>
-      <stop offset="1" stop-color="#925828"/>
+      <stop offset="0" stop-color="#607e5c"/>
+      <stop offset="0.55" stop-color="#476c50"/>
+      <stop offset="1" stop-color="#314e3b"/>
     </linearGradient>
     <linearGradient id="roomPaddle" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#bfcdb5"/>
-      <stop offset="1" stop-color="#8fa383"/>
+      <stop offset="0" stop-color="#fff6de"/>
+      <stop offset="1" stop-color="#e6d6b4"/>
     </linearGradient>
     <linearGradient id="roomPaddleSide" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#708668"/>
@@ -97,14 +97,17 @@
       <path d="M-11 4C-5 -6 5 -6 11 4" fill="none" stroke="#7d5b24" stroke-width="1" stroke-linecap="round" opacity="0.7"/>
     </g>
 
-    <g transform="translate(650 704)">
+    <g transform="translate(560 702) scale(.66)">
       <circle cx="0" cy="0" r="24" fill="url(#roomBrass)" stroke="#2b241b" stroke-width="1.6"/>
       <circle cx="0" cy="0" r="17" fill="none" stroke="#7d5b24" stroke-width="0.8" opacity="0.6"/>
       <path d="M0 0 L0 -14" stroke="#5f421c" stroke-width="1.5" stroke-linecap="round"/>
       <path d="M0 -19v3M0 16v3M-19 0h3M16 0h3" stroke="#7d5b24" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>
       <circle cx="0" cy="0" r="2.4" fill="#7d5b24"/>
     </g>
-    <text x="650" y="748" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="7" letter-spacing="3.2" fill="#5c381a" opacity="0.7">TRAILTURN</text>
+    <g transform="translate(650 736)">
+      <path d="M-38 0Q-38 28 0 28T38 0" fill="#57745c" stroke="#2b3629" stroke-width="2"/>
+      <ellipse rx="38" ry="14" fill="#acbf99" stroke="#2b3629" stroke-width="2"/><ellipse rx="31" ry="9" fill="#3e5844"/>
+    </g>
   </g>
 
   <g fill="none" stroke="#20211c" stroke-width="2.6" opacity="0.78">
