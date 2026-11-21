@@ -112,6 +112,26 @@ test('concurrent checkout, lost response, clean receipt reload and restart', asy
   assert.equal(lookup.headers.get('location'), clean);
 });
 
+test('cart writes accept the external HTTPS origin behind a trusted proxy', async t => {
+  const app = await launch(); t.after(app.close);
+  const g = await guest(app);
+  const previousTrustProxy = process.env.TRUST_PROXY;
+  process.env.TRUST_PROXY = '1';
+
+  try {
+    const response = await g.json('/api/cart', { quantity: 1 }, g.etag, {
+      origin: 'https://shop.example',
+      'x-forwarded-host': 'shop.example',
+      'x-forwarded-proto': 'https',
+    });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).cart.quantity, 1);
+  } finally {
+    if (previousTrustProxy === undefined) delete process.env.TRUST_PROXY;
+    else process.env.TRUST_PROXY = previousTrustProxy;
+  }
+});
+
 test('ordinary HTML checkout works for one item and preserves invalid input', async t => {
   const app = await launch(); t.after(app.close);
   const g = await guest(app);

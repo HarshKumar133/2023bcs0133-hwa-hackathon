@@ -60,7 +60,7 @@ On macOS, the typical `CHROME_PATH` is `/Applications/Google Chrome.app/Contents
 | `src/security.js`, `server.js` | Request validation, guest-scoped retries, signed receipt links and cookies |
 | `public/assets/`, `public/fonts/` | Original concept illustrations; locally served fonts with their OFL licenses |
 
-Deploy as **one long-running Node process with a persistent writable volume**. Set `DATA_DIR` to that volume, `HOST=0.0.0.0` if required by the host, and `PORT` to the assigned port. `GET /healthz` checks database availability. A static-only host cannot run the checkout.
+Deploy as **one long-running Node process with a persistent writable volume**. Set `DATA_DIR` to that volume, `HOST=0.0.0.0` if required by the host, and `PORT` to the assigned port. The Fly configuration sets `HOST`, `PORT`, and `TRUST_PROXY=1` for Fly's HTTPS proxy. `GET /healthz` checks database availability. A static-only host cannot run the checkout.
 
 Keep `RECEIPT_SECRET` stable (at least 32 random characters), or persist the automatically generated `.receipt-secret` alongside `trailturn.db`. Preserve both when moving the shop. Back up SQLite with its online backup facility or stop the process before copying the whole data directory. Changing the secret invalidates existing signed links; reference-plus-email lookup can issue a new one. Serve through HTTPS; enable `TRUST_PROXY=1` only behind a trusted proxy that overwrites forwarded headers. Rate limits are in memory per process. Optional `/ops` exact-reference search requires `OPS_TOKEN`; it is disabled by default.
 
