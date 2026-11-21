@@ -695,6 +695,16 @@
       if (saved && saved.cartId && saved.idempotencyKey) pending = saved;
     } catch { /* Same-page recovery only if storage is unavailable. */ }
 
+    const currentCartId = form.querySelector('[data-cart-id-input]')?.value;
+    const currentRevision = form.querySelector('[data-cart-revision-input]')?.value;
+    if (pending && (
+      form.dataset.checkoutPhase === 'recoverable-failure' ||
+      pending.cartId !== currentCartId ||
+      String(pending.revision) !== currentRevision
+    )) {
+      remember(null);
+    }
+
     function remember(attempt) {
       pending = attempt;
       try {

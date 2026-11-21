@@ -9,7 +9,11 @@ try {
   const context = await browser.newContext({ baseURL, reducedMotion: 'reduce', viewport: { width: 1440, height: 940 } });
   const p = await context.newPage();
   const errors = [];
+  let checkoutPosts = 0;
   p.on('pageerror', e => errors.push(e.message));
+  p.on('request', request => {
+    if (new URL(request.url()).pathname === '/checkout' && request.method() === 'POST') checkoutPosts += 1;
+  });
   await p.goto('/');
   await p.locator('h1').waitFor();
   await p.evaluate(() => document.fonts.ready);
@@ -53,6 +57,8 @@ try {
   await p.locator('#checkout-errors').waitFor();
   assert.equal(await p.locator('form[data-checkout-form]').getAttribute('data-checkout-phase'), 'recoverable-failure');
   assert.equal(await p.locator('#checkout-errors').evaluate(el => el === document.activeElement), true);
+  await p.waitForTimeout(300);
+  assert.equal(checkoutPosts, 1);
   for (const [name, value] of Object.entries({ fullName: 'Demo Guest', email: 'guest@example.test',
     address1: 'Unit 4, Demo Road', phone: '9876543210', city: 'Pune', pin: '411001' })) {
     await p.locator(`#field-${name}`).fill(value);
