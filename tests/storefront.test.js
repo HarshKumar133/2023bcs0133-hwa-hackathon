@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { createApp } from '../server.js';
 import { totalsFor } from '../src/pricing.js';
 import { formatINR } from '../src/views/money.js';
@@ -62,6 +62,15 @@ test('checkout renders its state label and all supported Indian regions', async 
   assert.match(html, /<option value="Arunachal Pradesh">Arunachal Pradesh<\/option>/);
   assert.match(html, /<option value="Lakshadweep">Lakshadweep<\/option>/);
   assert.doesNotMatch(html, /\[object Object\]/);
+});
+
+test('HTML fingerprints app.js so deployments bypass stale browser copies', async t => {
+  const app = await launch(); t.after(app.close);
+  const html = await (await app.request('/')).text();
+  const version = /<script src="\/app\.js\?v=([a-f0-9]{12})" defer><\/script>/.exec(html)?.[1];
+  const source = await readFile(new URL('../public/app.js', import.meta.url));
+  assert.equal(version, createHash('sha256').update(source).digest('hex').slice(0, 12));
+  assert.equal((await app.request(`/app.js?v=${version}`)).status, 200);
 });
 
 test('cart writes require revision, session token and same origin', async t => {

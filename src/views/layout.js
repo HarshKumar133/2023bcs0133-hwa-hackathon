@@ -1,6 +1,14 @@
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { PRODUCT } from '../pricing.js';
 import { formatINR } from './money.js';
 import { escapeAttr, escapeHtml } from '../security.js';
+
+const APP_SCRIPT_VERSION = createHash('sha256')
+  .update(readFileSync(fileURLToPath(new URL('../../public/app.js', import.meta.url))))
+  .digest('hex')
+  .slice(0, 12);
 
 export function logoMark(className = 'brand-mark') {
   return `
@@ -120,7 +128,7 @@ export function page({
   ${header ? siteHeader({ cartQuantity, current }) : ''}
   ${body}
   ${footer ? siteFooter() : ''}
-  <script src="/app.js" defer></script>
+  <script src="/app.js?v=${APP_SCRIPT_VERSION}" defer></script>
 </body>
 </html>`;
 }
