@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 760" role="img" aria-labelledby="heroTitle heroDesc">
+  <title id="heroTitle">TrailTurn floor toy</title>
+  <desc id="heroDesc">A round birch drum with three sage paddles. The first paddle is raised above a printed three-step route. A brass timer dial sits on the front.</desc>
+  <defs>
+    <radialGradient id="topWood" cx="36%" cy="28%" r="82%">
+      <stop offset="0" stop-color="#f5e6c9"/>
+      <stop offset="0.55" stop-color="#e4c99f"/>
+      <stop offset="1" stop-color="#caa574"/>
+    </radialGradient>
+    <linearGradient id="sideWood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ca9255"/>
+      <stop offset="0.55" stop-color="#b97a3f"/>
+      <stop offset="1" stop-color="#925828"/>
+    </linearGradient>
+    <linearGradient id="paddleFace" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#bfcdb5"/>
+      <stop offset="1" stop-color="#8fa383"/>
+    </linearGradient>
+    <linearGradient id="paddleSide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#708668"/>
+      <stop offset="1" stop-color="#4f664b"/>
+    </linearGradient>
+    <radialGradient id="brass" cx="34%" cy="28%" r="78%">
+      <stop offset="0" stop-color="#f2dda2"/>
+      <stop offset="0.58" stop-color="#c9a45c"/>
+      <stop offset="1" stop-color="#8f692b"/>
+    </radialGradient>
+    <filter id="floorShadow" x="-40%" y="-80%" width="180%" height="260%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="toyShadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="20" stdDeviation="16" flood-color="#3a2a17" flood-opacity="0.22"/>
+    </filter>
+    <clipPath id="sideClip">
+      <path d="M130 350 L130 430 A250 150 0 0 0 630 430 L630 350 Z"/>
+    </clipPath>
+  </defs>
+
+  <ellipse cx="380" cy="612" rx="272" ry="36" fill="#3a2a17" opacity="0.16" filter="url(#floorShadow)"/>
+
+  <g filter="url(#toyShadow)">
+    <path d="M130 350 L130 430 A250 150 0 0 0 630 430 L630 350 Z" fill="url(#sideWood)" stroke="#2b241b" stroke-width="2.4"/>
+    <g clip-path="url(#sideClip)" opacity="0.45">
+      <path d="M112 384c70 34 466 34 536 0" fill="none" stroke="#7c4720" stroke-width="1.2"/>
+      <path d="M104 404c82 38 470 38 552 0" fill="none" stroke="#7c4720" stroke-width="1"/>
+      <path d="M112 424c70 34 466 34 536 0" fill="none" stroke="#7c4720" stroke-width="1.2"/>
+      <path d="M130 444c66 30 434 30 500 0" fill="none" stroke="#7c4720" stroke-width="1"/>
+      <path d="M154 466c58 24 394 24 452 0" fill="none" stroke="#7c4720" stroke-width="1.2"/>
+    </g>
+    <path d="M130 430 A250 150 0 0 0 630 430" fill="none" stroke="#6d3e1d" stroke-width="2" opacity="0.5"/>
+
+    <ellipse cx="380" cy="350" rx="250" ry="150" fill="url(#topWood)" stroke="#2b241b" stroke-width="2.6"/>
+    <ellipse cx="380" cy="350" rx="236" ry="138" fill="none" stroke="#b8874c" stroke-width="1.4" opacity="0.75"/>
+    <ellipse cx="380" cy="350" rx="218" ry="124" fill="none" stroke="#8c6237" stroke-width="0.8" opacity="0.3"/>
+
+    <g opacity="0.25" fill="none" stroke="#9b6f41" stroke-width="1.1">
+      <path d="M196 330c34-30 118-46 194-45 66 1 136 15 170 38"/>
+      <path d="M180 360c44-25 126-38 206-36 70 2 144 15 190 36"/>
+      <path d="M214 404c44-22 106-31 166-30 58 1 118 10 158 27"/>
+      <path d="M280 296c42-15 88-20 136-19"/>
+      <path d="M404 292c36 2 74 9 104 20"/>
+    </g>
+
+    <path d="M380 250 L520 415 L240 415" fill="none" stroke="#b45f3e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 8" opacity="0.82"/>
+    <circle cx="380" cy="250" r="5" fill="#f4e5c7" stroke="#b45f3e" stroke-width="2"/>
+    <circle cx="520" cy="415" r="5" fill="#f4e5c7" stroke="#b45f3e" stroke-width="2"/>
+    <circle cx="240" cy="415" r="5" fill="#f4e5c7" stroke="#b45f3e" stroke-width="2"/>
+
+    <g transform="translate(520 415)">
+      <ellipse cx="0" cy="7" rx="42" ry="27" fill="#7d4b22" opacity="0.28"/>
+      <path d="M0 -37C19 -37 35 -21 35 0C35 22 19 37 0 37C-19 37 -35 22 -35 0C-35 -21 -19 -37 0 -37Z" fill="url(#paddleFace)" stroke="#2b241b" stroke-width="1.8" opacity="0.9"/>
+      <circle cx="0" cy="0" r="2.2" fill="#52684d" opacity="0.6"/>
+      <text x="0" y="5" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#2f4a38" opacity="0.65">2</text>
+    </g>
+
+    <g transform="translate(240 415)">
+      <ellipse cx="0" cy="7" rx="42" ry="27" fill="#7d4b22" opacity="0.28"/>
+      <path d="M0 -37C19 -37 35 -21 35 0C35 22 19 37 0 37C-19 37 -35 22 -35 0C-35 -21 -19 -37 0 -37Z" fill="url(#paddleFace)" stroke="#2b241b" stroke-width="1.8" opacity="0.9"/>
+      <circle cx="0" cy="0" r="2.2" fill="#52684d" opacity="0.6"/>
+      <text x="0" y="5" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#2f4a38" opacity="0.65">3</text>
+    </g>
+
+    <g transform="translate(380 250)">
+      <ellipse cx="0" cy="24" rx="48" ry="23" fill="#3a2a17" opacity="0.2"/>
+      <path d="M0 13C19 13 35 27 35 48C35 70 19 85 0 85C-19 85 -35 70 -35 48C-35 27 -19 13 0 13Z" fill="url(#paddleSide)" stroke="#2b241b" stroke-width="2"/>
+      <path d="M0 -48C20 -48 37 -31 37 -9C37 14 20 32 0 32C-20 32 -37 14 -37 -9C-37 -31 -20 -48 0 -48Z" fill="url(#paddleFace)" stroke="#2b241b" stroke-width="2.2"/>
+      <path d="M-26 -22C-18 -34 -5 -39 7 -38" fill="none" stroke="#e6efdf" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+      <text x="0" y="-3" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="700" fill="#2f4a38">1</text>
+      <circle cx="0" cy="37" r="4" fill="#2b241b" opacity="0.45"/>
+    </g>
+
+    <g transform="translate(380 350)">
+      <circle cx="0" cy="0" r="46" fill="url(#brass)" stroke="#2b241b" stroke-width="2"/>
+      <circle cx="0" cy="0" r="35" fill="none" stroke="#7d5b24" stroke-width="1" opacity="0.55"/>
+      <circle cx="0" cy="0" r="7" fill="#7d5b24" opacity="0.75"/>
+      <path d="M-18 6C-8 -8 8 -8 18 6" fill="none" stroke="#7d5b24" stroke-width="1.4" stroke-linecap="round" opacity="0.7"/>
+      <circle cx="-18" cy="6" r="2.4" fill="#7d5b24" opacity="0.75"/>
+      <circle cx="18" cy="6" r="2.4" fill="#7d5b24" opacity="0.75"/>
+      <circle cx="0" cy="-18" r="2.4" fill="#7d5b24" opacity="0.75"/>
+      <text x="0" y="-23" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="7" letter-spacing="1.4" fill="#5e4519" opacity="0.7">TRAILTURN</text>
+    </g>
+
+    <g transform="translate(380 520)">
+      <circle cx="0" cy="0" r="38" fill="url(#brass)" stroke="#2b241b" stroke-width="2"/>
+      <circle cx="0" cy="0" r="28" fill="none" stroke="#7d5b24" stroke-width="0.9" opacity="0.55"/>
+      <circle cx="0" cy="0" r="3.5" fill="#7d5b24"/>
+      <path d="M0 0 L0 -22" stroke="#5f421c" stroke-width="2" stroke-linecap="round"/>
+      <path d="M0 -30v4M0 26v4M-30 0h4M26 0h4" stroke="#7d5b24" stroke-width="1.6" stroke-linecap="round" opacity="0.8"/>
+      <text x="0" y="-40" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="6" letter-spacing="1.2" fill="#5e4519" opacity="0.7">WINDOW</text>
+      <text x="18" y="-18" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="5.5" fill="#5e4519" opacity="0.75">15</text>
+      <text x="22" y="22" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="5.5" fill="#5e4519" opacity="0.75">30</text>
+      <text x="-21" y="22" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="5.5" fill="#5e4519" opacity="0.75">45</text>
+      <text x="-18" y="-18" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="5.5" fill="#5e4519" opacity="0.75">0</text>
+    </g>
+
+    <text x="380" y="584" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="9" letter-spacing="4.2" fill="#5c381a" opacity="0.68">TRAILTURN</text>
+
+    <g fill="#6d3e1d" opacity="0.55">
+      <circle cx="170" cy="374" r="3"/>
+      <circle cx="590" cy="374" r="3"/>
+      <circle cx="380" cy="494" r="3"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,633 @@
+import { PRODUCT, formatINR } from '../pricing.js';
+import { escapeAttr, escapeHtml } from '../security.js';
+import { INDIAN_STATES } from '../validation.js';
+import { sectionLabel } from './layout.js';
+
+const FIELD_LABELS = {
+  fullName: 'Full name',
+  email: 'Email',
+  phone: 'Mobile number',
+  address1: 'Address line 1',
+  address2: 'Address line 2',
+  city: 'City',
+  state: 'State or union territory',
+  pin: 'PIN code',
+};
+
+function errorSummary(errors) {
+  const keys = Object.keys(errors || {});
+  if (!keys.length) return '';
+  return `
+    <div class="error-summary" id="checkout-errors" role="alert" tabindex="-1">
+      <div class="error-summary-mark" aria-hidden="true">!</div>
+      <div>
+        <h2>There is a problem with this order</h2>
+        <ul>
+          ${keys.map((key) => `<li><a href="#field-${escapeAttr(key)}">${escapeHtml(errors[key])}</a></li>`).join('')}
+        </ul>
+      </div>
+    </div>
+  `;
+}
+
+function describedBy(id, help, error) {
+  return [help ? `${id}-help` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ');
+}
+
+function textField({
+  id,
+  name,
+  label,
+  value = '',
+  error = '',
+  type = 'text',
+  autocomplete = '',
+  inputmode = '',
+  placeholder = '',
+  help = '',
+  required = true,
+  maxlength = 120,
+  extra = '',
+}) {
+  const described = describedBy(id, help, error);
+  return `
+    <div class="field${error ? ' field--error' : ''}">
+      <label for="${escapeAttr(id)}">${escapeHtml(label)}${required ? '<span class="req" aria-hidden="true">*</span>' : '<span class="optional">Optional</span>'}</label>
+      ${help ? `<p class="field-help" id="${escapeAttr(id)}-help">${escapeHtml(help)}</p>` : ''}
+      <input
+        id="${escapeAttr(id)}"
+        name="${escapeAttr(name)}"
+        type="${escapeAttr(type)}"
+        value="${escapeAttr(value)}"
+        ${autocomplete ? `autocomplete="${escapeAttr(autocomplete)}"` : ''}
+        ${inputmode ? `inputmode="${escapeAttr(inputmode)}"` : ''}
+        ${placeholder ? `placeholder="${escapeAttr(placeholder)}"` : ''}
+        ${maxlength ? `maxlength="${escapeAttr(maxlength)}"` : ''}
+        ${required ? 'required' : ''}
+        ${error ? 'aria-invalid="true"' : ''}
+        ${described ? `aria-describedby="${escapeAttr(described)}"` : ''}
+        ${extra}
+      >
+      ${error ? `<p class="field-error" id="${escapeAttr(id)}-error">${escapeHtml(error)}</p>` : ''}
+    </div>
+  `;
+}
+
+function selectField({ id, name, label, value, error, help }) {
+  const described = describedBy(id, help, error);
+  return `
+    <div class="field${error ? ' field--error' : ''}">
+      <label for="${escapeAttr(id)}">${escapeHtml(label)}<span class="req" aria-hidden="true">*</span></label>
+      ${help ? `<p class="field-help" id="${escapeAttr(id)}-help">${escapeHtml(help)}</p>` : ''}
+      <select
+        id="${escapeAttr(id)}"
+        name="${escapeAttr(name)}"
+        required
+        ${error ? 'aria-invalid="true"' : ''}
+        ${described ? `aria-describedby="${escapeAttr(described)}"` : ''}
+      >
+        <option value="">Choose one</option>
+        ${INDIAN_STATES.map((state) => `<option value="${escapeAttr(state)}"${state === value ? ' selected' : ''}>${escapeHtml(state)}</option>`).join('')}
+      </select>
+      ${error ? `<p class="field-error" id="${escapeAttr(id)}-error">${escapeHtml(error)}</p>` : ''}
+    </div>
+  `;
+}
+
+function quantityStepper(quantity) {
+  return `
+    <div class="qty" role="group" aria-label="Quantity">
+      <button type="button" class="qty-button" data-qty-decrease aria-label="Decrease quantity" ${quantity <= 1 ? 'disabled' : ''}>−</button>
+      <span class="qty-value" data-qty-value aria-live="polite">${quantity}</span>
+      <button type="button" class="qty-button" data-qty-increase aria-label="Increase quantity" ${quantity >= PRODUCT.maxQuantity ? 'disabled' : ''}>+</button>
+    </div>
+  `;
+}
+
+function routeMini(route) {
+  const long = route === 'long';
+  return `
+    <svg class="route-mini" viewBox="0 0 120 84" aria-hidden="true">
+      <circle cx="60" cy="60" r="28" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.35"/>
+      <path d="${long ? 'M60 22 L86 58 L34 58' : 'M60 22 L34 58 L86 58'}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 5"/>
+      <circle cx="60" cy="22" r="5.5" fill="currentColor"/>
+      <circle cx="${long ? 86 : 34}" cy="58" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <circle cx="${long ? 34 : 86}" cy="58" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    </svg>
+  `;
+}
+
+function opportunityTimeline() {
+  return `
+    <ol class="opportunity-timeline" aria-label="Four timed opportunities in a 45-minute window">
+      ${[0, 15, 30, 45].map((minute, index) => `
+        <li data-slot="${index}" class="is-upcoming">
+          <span class="slot-time">${minute} min</span>
+          <span class="slot-dot" aria-hidden="true"></span>
+          <span class="slot-label" data-slot-label="${index}">Upcoming</span>
+        </li>
+      `).join('')}
+    </ol>
+  `;
+}
+
+export function renderHome({
+  cart,
+  csrfToken,
+  errors = {},
+  values = {},
+  notice = '',
+  idempotencyKey,
+  cartQuantity = 1,
+}) {
+  const quantity = cart?.quantity || 1;
+  const totals = cart?.totals || { quantity: 1, subtotalPaise: PRODUCT.unitPricePaise, deliveryPaise: PRODUCT.deliveryPaise, totalPaise: PRODUCT.unitPricePaise + PRODUCT.deliveryPaise };
+  const cartId = cart?.id || '';
+  const revision = cart?.revision || 0;
+  const hasErrors = Object.keys(errors).length > 0;
+
+  const bodyData = [
+    `data-page="home"`,
+    `data-cart-id="${escapeAttr(cartId)}"`,
+    `data-cart-revision="${escapeAttr(revision)}"`,
+    `data-csrf="${escapeAttr(csrfToken)}"`,
+    `data-max-qty="${PRODUCT.maxQuantity}"`,
+    `data-unit-price="${PRODUCT.unitPricePaise}"`,
+    `data-delivery="${PRODUCT.deliveryPaise}"`,
+  ].join(' ');
+
+  const body = `
+    <main id="main">
+      <section class="hero shell" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow reveal">The floor toy that holds its place</p>
+          <h1 id="hero-title" class="reveal">A route your dog can <em>feel.</em><br>And return to.</h1>
+          <p class="hero-lead reveal">TrailTurn raises one paddle at a time. Your dog noses the route forward. Walk away, and the next step stays up — exactly where they left it.</p>
+          <div class="hero-buy reveal">
+            <a class="button button--ink button--large" href="#demo">Try a route <span aria-hidden="true">→</span></a>
+            <a class="button button--outline button--large" href="#buy">Buy TrailTurn</a>
+          </div>
+          <p class="hero-price reveal"><strong>${formatINR(PRODUCT.unitPricePaise)}</strong> <span>+ ${formatINR(PRODUCT.deliveryPaise)} delivery</span> <span class="dot" aria-hidden="true">·</span> <span>${formatINR(PRODUCT.unitPricePaise + PRODUCT.deliveryPaise)} for one, delivered</span></p>
+          <ul class="hero-facts reveal" aria-label="TrailTurn at a glance">
+            <li><span>45</span> min window</li>
+            <li><span>4</span> timed chances</li>
+            <li><span>1</span> route held</li>
+          </ul>
+        </div>
+
+        <div class="hero-visual reveal">
+          <div class="hero-plate">
+            <div class="plate-grid" aria-hidden="true"></div>
+            <img class="hero-toy" src="/assets/toy-hero.svg" alt="Round birch drum with three numbered paddles. Paddle one stands above the other two." width="760" height="760">
+            <span class="annotation annotation--a"><span class="annotation-dot" aria-hidden="true"></span>Raised paddle</span>
+            <span class="annotation annotation--b"><span class="annotation-dot" aria-hidden="true"></span>Route diagram</span>
+            <span class="annotation annotation--c"><span class="annotation-dot" aria-hidden="true"></span>45-min window</span>
+            <div class="route-chip">
+              <span class="route-chip-label">Route A</span>
+              <span class="route-chip-name">Long way</span>
+              <span class="route-chip-seq">1 <span aria-hidden="true">→</span> 2 <span aria-hidden="true">→</span> 3</span>
+            </div>
+          </div>
+          <div class="hero-caption">
+            <span>Concept study 01</span>
+            <span>Birch ply · ABS paddles · brass hub</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="marquee" aria-hidden="true">
+        <div class="marquee-track">
+          <span>One route</span><span class="marquee-dot">·</span><span>Four chances</span><span class="marquee-dot">·</span><span>No pile-ups</span><span class="marquee-dot">·</span><span>Walk away, come back</span><span class="marquee-dot">·</span>
+          <span>One route</span><span class="marquee-dot">·</span><span>Four chances</span><span class="marquee-dot">·</span><span>No pile-ups</span><span class="marquee-dot">·</span><span>Walk away, come back</span><span class="marquee-dot">·</span>
+        </div>
+      </div>
+
+      <section class="section shell" id="difference" aria-labelledby="difference-title">
+        ${sectionLabel('01', 'Why a route')}
+        <div class="section-heading split-heading">
+          <h2 id="difference-title" class="reveal">A sequence is a trick.<br><em>A route is a conversation.</em></h2>
+          <p class="section-lead reveal">Touchpad games already teach a dog to touch pads in order. TrailTurn is built around what happens between the steps: the pause, the walk-away, the return.</p>
+        </div>
+        <div class="principle-grid">
+          <article class="principle-card reveal">
+            <span class="principle-number">01</span>
+            <div class="principle-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64"><circle cx="32" cy="34" r="20" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M32 34 L32 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="32" cy="15" r="5" fill="currentColor"/><path d="M17 48c8 4 22 4 30 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="3 4"/></svg>
+            </div>
+            <h3>It keeps the next step up</h3>
+            <p>The drum holds the current paddle physically raised. No screen, no reset, no starting from the beginning.</p>
+          </article>
+          <article class="principle-card reveal">
+            <span class="principle-number">02</span>
+            <div class="principle-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64"><path d="M12 38c8-14 24-20 38-12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="4 5"/><path d="M44 18l7 8-10 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="46" r="5" fill="currentColor"/><path d="M28 52h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </div>
+            <h3>It resumes where you left it</h3>
+            <p>Step away after the first push. The route waits. Come back and the next paddle is still the next paddle.</p>
+          </article>
+          <article class="principle-card reveal">
+            <span class="principle-number">03</span>
+            <div class="principle-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64"><circle cx="20" cy="24" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="32" cy="24" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="44" cy="24" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M14 44h36" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M20 36l24 8M44 36l-24 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.45"/></svg>
+            </div>
+            <h3>It lets a chance pass</h3>
+            <p>A missed 15-minute slot doesn't empty a pile of portions into the next one. The opportunity passes; the route stays.</p>
+          </article>
+        </div>
+        <div class="difference-strip reveal">
+          <p class="difference-quote">“The useful part isn't the push. It's the pause before the next one.”</p>
+          <div class="difference-timeline" aria-label="A missed opportunity does not stack portions">
+            <span class="mini-slot is-used"><span>0</span><small>used</small></span>
+            <span class="mini-line" aria-hidden="true"></span>
+            <span class="mini-slot is-missed"><span>15</span><small>passed</small></span>
+            <span class="mini-line" aria-hidden="true"></span>
+            <span class="mini-slot is-current"><span>30</span><small>waiting</small></span>
+            <span class="mini-line" aria-hidden="true"></span>
+            <span class="mini-slot"><span>45</span><small>ahead</small></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--toy shell" id="toy" aria-labelledby="toy-title">
+        ${sectionLabel('02', 'The object')}
+        <div class="section-heading split-heading">
+          <h2 id="toy-title" class="reveal">One object.<br><em>Three ways to read it.</em></h2>
+          <p class="section-lead reveal">The same three-paddle outline runs through the room, the route, and the lift. The diagram is not decoration — it is how the owner sets the path.</p>
+        </div>
+        <div class="gallery-layout">
+          <div class="gallery reveal" data-gallery>
+            <figure class="gallery-main">
+              <div class="gallery-frame">
+                <img data-gallery-image src="/assets/toy-room.svg" alt="TrailTurn on a rug in a quiet room, with one paddle raised" width="1200" height="900">
+                <span class="gallery-index" data-gallery-count>01 / 03</span>
+              </div>
+              <figcaption>
+                <span data-gallery-caption>In the room</span>
+                <span class="gallery-note">Concept illustration</span>
+              </figcaption>
+            </figure>
+            <div class="gallery-thumbs" role="group" aria-label="Product views">
+              <button type="button" class="gallery-thumb is-active" data-gallery-thumb data-src="/assets/toy-room.svg" data-alt="TrailTurn on a rug in a quiet room, with one paddle raised" data-caption="In the room" data-count="01 / 03" aria-pressed="true">
+                <img src="/assets/toy-room.svg" alt="" width="240" height="180">
+                <span>In the room</span>
+              </button>
+              <button type="button" class="gallery-thumb" data-gallery-thumb data-src="/assets/toy-route.svg" data-alt="Top view of TrailTurn showing the Long way and Switchback routes" data-caption="The route" data-count="02 / 03" aria-pressed="false">
+                <img src="/assets/toy-route.svg" alt="" width="240" height="180">
+                <span>The route</span>
+              </button>
+              <button type="button" class="gallery-thumb" data-gallery-thumb data-src="/assets/toy-side.svg" data-alt="Side view of TrailTurn with the first paddle lifted" data-caption="The lift" data-count="03 / 03" aria-pressed="false">
+                <img src="/assets/toy-side.svg" alt="" width="240" height="180">
+                <span>The lift</span>
+              </button>
+            </div>
+          </div>
+          <div class="toy-details reveal">
+            <p class="toy-kicker">The route is printed where the owner can see it.</p>
+            <p>Set the route card under the clear top. The dog works the raised paddle; the drum indexes the route. The diagram stays visible during setup, so the path is a shared plan rather than a hidden trick.</p>
+            <dl class="spec-list">
+              <div><dt>Footprint</dt><dd>34 cm across · 11 cm tall · 2.1 kg</dd></div>
+              <div><dt>Proposed materials</dt><dd>Birch ply drum · ABS paddles · brass hub</dd></div>
+              <div><dt>Route</dt><dd>Three paddles · four timed chances · one held step</dd></div>
+              <div><dt>Care</dt><dd>Wipe-clean top · supervised floor play · not a chew toy</dd></div>
+            </dl>
+            <div class="in-the-box">
+              <h3>In the box</h3>
+              <ul>
+                <li>TrailTurn drum</li>
+                <li>Three paddle set</li>
+                <li>Long way and Switchback route cards</li>
+                <li>Quick-start guide + portion cup</li>
+              </ul>
+            </div>
+            <div class="toy-buyline">
+              <span class="toy-price">${formatINR(PRODUCT.unitPricePaise)}</span>
+              <a class="button button--ink" href="#buy">Choose TrailTurn</a>
+            </div>
+            <p class="fine-print">Illustrations, not photographs. The product is a concept; materials and dimensions are proposed demo details.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--how" id="how" aria-labelledby="how-title">
+        <div class="shell">
+          ${sectionLabel('03', 'Set, lift, return')}
+          <div class="section-heading split-heading">
+            <h2 id="how-title" class="reveal">Set a route. Let it lift.<br><em>Let it wait.</em></h2>
+            <p class="section-lead reveal">The interaction is deliberately small. The interesting part is what the object does when nobody is pushing.</p>
+          </div>
+          <div class="steps">
+            <article class="step reveal">
+              <span class="step-number">01</span>
+              <div class="step-visual" aria-hidden="true">
+                <svg viewBox="0 0 220 150"><circle cx="110" cy="78" r="52" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M110 32 L154 102 L66 102" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 6"/><circle cx="110" cy="32" r="7" fill="currentColor"/><circle cx="154" cy="102" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="66" cy="102" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M28 128h164" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.3"/></svg>
+              </div>
+              <h3>Set the route</h3>
+              <p>Slide a route card under the clear top. Long way runs 1 → 2 → 3. Switchback runs 1 → 3 → 2. The diagram stays visible while you set up.</p>
+            </article>
+            <article class="step reveal">
+              <span class="step-number">02</span>
+              <div class="step-visual" aria-hidden="true">
+                <svg viewBox="0 0 220 150"><circle cx="110" cy="78" r="52" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M70 78h80" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="70" cy="78" r="5" fill="currentColor"/><circle cx="96" cy="78" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="122" cy="78" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="148" cy="78" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M70 58v-16M96 58v-10M122 58v-6M148 58v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><text x="110" y="132" text-anchor="middle" font-family="Instrument Sans, sans-serif" font-size="10" letter-spacing="2" fill="currentColor">0 · 15 · 30 · 45</text></svg>
+              </div>
+              <h3>Start the window</h3>
+              <p>At minute 0, the first paddle lifts. At 15, 30, and 45, the next opportunity arrives. Four chances — not a pile of portions.</p>
+            </article>
+            <article class="step reveal">
+              <span class="step-number">03</span>
+              <div class="step-visual" aria-hidden="true">
+                <svg viewBox="0 0 220 150"><circle cx="110" cy="78" r="52" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M110 32 L154 102 L66 102" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 6"/><circle cx="110" cy="32" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="154" cy="102" r="7" fill="currentColor"/><circle cx="66" cy="102" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M170 44c10 8 12 22 4 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="3 4"/><path d="M168 36l9 6-4 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <h3>Let the route wait</h3>
+              <p>One nose push indexes the drum and raises the next paddle. Walk away and it stays raised. Return and continue the same route.</p>
+            </article>
+          </div>
+
+          <div class="how-notes reveal">
+            <div class="how-note">
+              <p class="eyebrow">What a missed round does</p>
+              <p>It passes. The slot closes without releasing extra portions. The raised paddle is still the current step, not a queue of treats.</p>
+            </div>
+            <div class="how-note">
+              <p class="eyebrow">What the dog learns</p>
+              <p>A route, not a random target. The same three-paddle outline is in the room, on the drum, and in the demo — so the owner and dog meet the same shape.</p>
+            </div>
+          </div>
+
+          <div class="faq reveal">
+            <h3 class="faq-title">The questions we'd ask before buying</h3>
+            <details>
+              <summary>Is TrailTurn a treat dispenser?</summary>
+              <p>No. It is a route toy. The owner sets the route and the portions; the demo focuses on the held route and the timed opportunities. Portion handling is a prototype question.</p>
+            </details>
+            <details>
+              <summary>What happens if my dog walks away?</summary>
+              <p>The current paddle stays raised. The route does not reset. Returning resumes the same step, which is the behaviour the web demo is built to show.</p>
+            </details>
+            <details>
+              <summary>What happens if a time slot is missed?</summary>
+              <p>The slot passes without releasing a pile of portions. The raised paddle waits for the next interaction. This is a proposed policy, not a validated mechanical behaviour.</p>
+            </details>
+            <details>
+              <summary>Is the sequence itself new?</summary>
+              <p>No claim of worldwide novelty. CleverPet already describes dogs touching pads in sequence. TrailTurn's proposed difference is a route the dog can feel and resume, with the next step physically held.</p>
+            </details>
+            <details>
+              <summary>Can my dog use it unsupervised?</summary>
+              <p>That has not been validated. Treat it as supervised floor play, inspect the toy for wear, and check with a vet or behaviour professional if your dog is a heavy chewer.</p>
+            </details>
+            <details>
+              <summary>Is the checkout real?</summary>
+              <p>It is a working guest checkout and receipt flow, but this demo does not collect payment and no product ships. The ${formatINR(PRODUCT.unitPricePaise)} price, ${formatINR(PRODUCT.deliveryPaise)} delivery, and ${PRODUCT.maxQuantity}-unit limit are demo decisions.</p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--demo" id="demo" aria-labelledby="demo-title">
+        <div class="shell">
+          ${sectionLabel('04', 'Try a route')}
+          <div class="section-heading split-heading">
+            <h2 id="demo-title" class="reveal">Three taps.<br><em>Then try the other route.</em></h2>
+            <p class="section-lead reveal">Choose a route and tap the raised paddle. Each tap jumps to the next timed chance. Try walking away and letting a slot pass: the next paddle will still be waiting when you return.</p>
+          </div>
+
+          <div class="demo reveal" data-demo data-phase="ready" data-route="long" data-step="0" data-opportunity="0">
+            <div class="demo-top">
+              <div class="route-picker" role="group" aria-label="Choose a route">
+                <button type="button" class="route-card is-active" data-route="long" aria-pressed="true">
+                  <span class="route-card-head"><span class="route-card-tag">Route A</span><span class="route-card-name">Long way</span></span>
+                  ${routeMini('long')}
+                  <span class="route-card-seq">1 <span aria-hidden="true">→</span> 2 <span aria-hidden="true">→</span> 3</span>
+                  <span class="route-card-copy">The broad loop. Good for a first session.</span>
+                </button>
+                <button type="button" class="route-card" data-route="switch" aria-pressed="false">
+                  <span class="route-card-head"><span class="route-card-tag">Route B</span><span class="route-card-name">Switchback</span></span>
+                  ${routeMini('switch')}
+                  <span class="route-card-seq">1 <span aria-hidden="true">→</span> 3 <span aria-hidden="true">→</span> 2</span>
+                  <span class="route-card-copy">A tighter turn. Try it after the first route.</span>
+                </button>
+              </div>
+
+              <div class="demo-stage">
+                <div class="demo-toy">
+                  <svg class="demo-paths" viewBox="0 0 400 400" aria-hidden="true">
+                    <circle cx="200" cy="200" r="168" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.28"/>
+                    <circle cx="200" cy="200" r="118" fill="none" stroke="currentColor" stroke-width="1" opacity="0.18" stroke-dasharray="2 7"/>
+                    <path data-segment="long-0" d="M200 96 L304 272" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 8" opacity="0.45"/>
+                    <path data-segment="long-1" d="M304 272 L96 272" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 8" opacity="0.45"/>
+                    <path data-segment="switch-0" d="M200 96 L96 272" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 8" opacity="0.45"/>
+                    <path data-segment="switch-1" d="M96 272 L304 272" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 8" opacity="0.45"/>
+                  </svg>
+
+                  <div class="demo-slot demo-slot--1">
+                    <button type="button" class="demo-paddle" data-paddle="1" aria-label="Paddle 1, waiting.">
+                      <span class="paddle-face"><span class="paddle-number">1</span></span>
+                      <span class="paddle-tag">PUSH</span>
+                    </button>
+                  </div>
+                  <div class="demo-slot demo-slot--2">
+                    <button type="button" class="demo-paddle" data-paddle="2" aria-label="Paddle 2, waiting.">
+                      <span class="paddle-face"><span class="paddle-number">2</span></span>
+                      <span class="paddle-tag">PUSH</span>
+                    </button>
+                  </div>
+                  <div class="demo-slot demo-slot--3">
+                    <button type="button" class="demo-paddle" data-paddle="3" aria-label="Paddle 3, waiting.">
+                      <span class="paddle-face"><span class="paddle-number">3</span></span>
+                      <span class="paddle-tag">PUSH</span>
+                    </button>
+                  </div>
+
+                  <div class="demo-hub" aria-hidden="true">
+                    <span class="hub-mark">TT</span>
+                    <span class="hub-label">route held</span>
+                  </div>
+
+                  <div class="demo-dial" data-dial data-step="0" aria-hidden="true">
+                    <span class="dial-ring"></span>
+                    <span class="dial-hand"></span>
+                    <span class="dial-tick dial-tick--0">0</span>
+                    <span class="dial-tick dial-tick--1">15</span>
+                    <span class="dial-tick dial-tick--2">30</span>
+                    <span class="dial-tick dial-tick--3">45</span>
+                  </div>
+                </div>
+                <p class="demo-hint" data-demo-hint>Choose a route, then start the window.</p>
+              </div>
+
+              <div class="demo-panel">
+                <div class="demo-status" aria-live="polite">
+                  <p class="eyebrow">Current state</p>
+                  <p class="demo-status-title" data-demo-status>Ready when you are.</p>
+                  <p class="demo-status-detail" data-demo-detail>Pick a route to see its path on the drum.</p>
+                </div>
+                <dl class="demo-stats">
+                  <div><dt>Route</dt><dd data-demo-route>Long way</dd></div>
+                  <div><dt>Paddle up</dt><dd data-demo-paddle>—</dd></div>
+                  <div><dt>Missed chances</dt><dd data-demo-missed>0</dd></div>
+                  <div><dt>Portions used</dt><dd data-demo-used>0</dd></div>
+                </dl>
+                <div class="demo-controls">
+                  <button type="button" class="button button--cream" data-demo-start>Start the window</button>
+                  <button type="button" class="button button--ghost" data-demo-away disabled>Walk away</button>
+                  <button type="button" class="button button--ghost" data-demo-skip disabled>Let 15 min pass</button>
+                  <button type="button" class="button button--text" data-demo-reset>Reset</button>
+                </div>
+                ${opportunityTimeline()}
+                <p class="demo-footnote" data-demo-footnote>A missed slot passes without releasing a pile. The route stays put.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--buy shell" id="buy" aria-labelledby="buy-title">
+        ${sectionLabel('05', 'Buy')}
+        <div class="buy-layout">
+          <div class="buy-copy reveal">
+            <h2 id="buy-title">A small first run.<br><em>One clear total.</em></h2>
+            <p class="section-lead">One TrailTurn, one route card set, and a receipt you can reload. Guest checkout — no account, no payment in this demo.</p>
+            <div class="buy-price">
+              <span class="buy-price-main">${formatINR(PRODUCT.unitPricePaise)}</span>
+              <span class="buy-price-sub">+ ${formatINR(PRODUCT.deliveryPaise)} delivery · limit ${PRODUCT.maxQuantity} per order</span>
+            </div>
+            <ul class="buy-points">
+              <li><span aria-hidden="true">01</span>Delivery fee shown before checkout.</li>
+              <li><span aria-hidden="true">02</span>Total recalculated on the server.</li>
+              <li><span aria-hidden="true">03</span>Receipt link plus email lookup.</li>
+              <li><span aria-hidden="true">04</span>Demo order — no charge, no shipment.</li>
+            </ul>
+            <div class="buy-note">
+              <p class="eyebrow">What this demo proves</p>
+              <p>A guest can choose a quantity, see the full price, place one order, and reload an authorized receipt. The route demo and the shop share the same three-paddle language.</p>
+            </div>
+            <div class="buy-route-card" aria-hidden="true">
+              <div class="buy-route-head"><span>ROUTE A</span><span>LONG WAY</span></div>
+              <svg viewBox="0 0 260 120">
+                <circle cx="130" cy="60" r="48" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.35"/>
+                <path d="M130 22 L178 92 L82 92" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 6"/>
+                <circle cx="130" cy="22" r="8" fill="currentColor"/>
+                <circle cx="178" cy="92" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                <circle cx="82" cy="92" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                <text x="130" y="26" text-anchor="middle" font-family="Instrument Sans, sans-serif" font-size="9" font-weight="700" fill="#f3eee4">1</text>
+                <text x="178" y="96" text-anchor="middle" font-family="Instrument Sans, sans-serif" font-size="9" font-weight="700" fill="currentColor">2</text>
+                <text x="82" y="96" text-anchor="middle" font-family="Instrument Sans, sans-serif" font-size="9" font-weight="700" fill="currentColor">3</text>
+              </svg>
+              <div class="buy-route-foot"><span>0 · 15 · 30 · 45</span><span>ONE STEP HELD</span></div>
+            </div>
+          </div>
+
+          <div class="checkout-card reveal">
+            <div class="checkout-head">
+              <div>
+                <p class="eyebrow">Guest checkout</p>
+                <h3>Where should it go?</h3>
+              </div>
+              <span class="checkout-step">01 / 01</span>
+            </div>
+
+            ${errorSummary(errors)}
+            ${notice ? `<div class="notice notice--warn" role="status">${escapeHtml(notice)}</div>` : ''}
+            <div class="notice notice--warn" data-cart-notice hidden role="status" tabindex="-1"></div>
+
+            <form id="checkout-form" class="checkout-form" method="post" action="/checkout" novalidate data-checkout-form>
+              <input type="hidden" name="cartId" value="${escapeAttr(cartId)}" data-cart-id-input>
+              <input type="hidden" name="revision" value="${escapeAttr(revision)}" data-cart-revision-input>
+              <input type="hidden" name="idempotencyKey" value="${escapeAttr(idempotencyKey)}" data-idempotency-input>
+              <input type="hidden" name="csrf" value="${escapeAttr(csrfToken)}">
+
+              <div class="order-summary" aria-label="Order summary">
+                <div class="order-product">
+                  <img src="/assets/toy-top.svg" alt="" width="96" height="96">
+                  <div>
+                    <p class="order-name">${escapeHtml(PRODUCT.name)}</p>
+                    <p class="order-meta">Route card set included · ${escapeHtml(PRODUCT.sku)}</p>
+                    <p class="order-delivery">Delivery in 5–7 working days (demo)</p>
+                  </div>
+                  ${quantityStepper(quantity)}
+                </div>
+                <dl class="price-lines">
+                  <div><dt>Subtotal <span data-summary-qty>${quantity}</span> × ${formatINR(PRODUCT.unitPricePaise)}</dt><dd data-subtotal>${formatINR(totals.subtotalPaise)}</dd></div>
+                  <div><dt>Delivery</dt><dd data-delivery>${formatINR(totals.deliveryPaise)}</dd></div>
+                  <div class="price-total"><dt>Total</dt><dd data-total>${formatINR(totals.totalPaise)}</dd></div>
+                </dl>
+                <p class="order-note">Inclusive of all taxes. Delivery is shown before checkout and checked again on the server.</p>
+              </div>
+
+              <fieldset class="form-section">
+                <legend>Contact</legend>
+                <div class="field-grid">
+                  ${textField({ id: 'field-fullName', name: 'fullName', label: FIELD_LABELS.fullName, value: values.fullName || '', error: errors.fullName || '', autocomplete: 'name', placeholder: 'Asha Rao', maxlength: 80 })}
+                  ${textField({ id: 'field-email', name: 'email', label: FIELD_LABELS.email, value: values.email || '', error: errors.email || '', type: 'email', autocomplete: 'email', placeholder: 'asha@example.com', help: 'Your receipt link is sent here in a real shop. This demo shows it on screen.', maxlength: 254 })}
+                </div>
+                <div class="field-grid field-grid--narrow">
+                  <div class="field${errors.phone ? ' field--error' : ''}">
+                    <label for="field-phone">Mobile number<span class="req" aria-hidden="true">*</span></label>
+                    <div class="phone-input">
+                      <span class="phone-prefix" aria-hidden="true">+91</span>
+                      <input
+                        id="field-phone"
+                        name="phone"
+                        type="tel"
+                        inputmode="numeric"
+                        autocomplete="tel-national"
+                        value="${escapeAttr(values.phone || '')}"
+                        placeholder="98765 43210"
+                        maxlength="10"
+                        required
+                        ${errors.phone ? 'aria-invalid="true"' : ''}
+                        ${errors.phone ? 'aria-describedby="field-phone-error"' : ''}
+                      >
+                    </div>
+                    ${errors.phone ? `<p class="field-error" id="field-phone-error">${escapeHtml(errors.phone)}</p>` : ''}
+                  </div>
+                </div>
+              </fieldset>
+
+              <fieldset class="form-section">
+                <legend>Delivery address</legend>
+                <div class="field-grid">
+                  ${textField({ id: 'field-address1', name: 'address1', label: FIELD_LABELS.address1, value: values.address1 || '', error: errors.address1 || '', autocomplete: 'address-line1', placeholder: 'Flat 4B, 12 Neem Lane', maxlength: 120 })}
+                  ${textField({ id: 'field-address2', name: 'address2', label: FIELD_LABELS.address2, value: values.address2 || '', error: errors.address2 || '', autocomplete: 'address-line2', placeholder: 'Near the old post office', required: false, maxlength: 120 })}
+                </div>
+                <div class="field-grid field-grid--three">
+                  ${textField({ id: 'field-city', name: 'city', label: FIELD_LABELS.city, value: values.city || '', error: errors.city || '', autocomplete: 'address-level2', placeholder: 'Pune', maxlength: 60 })}
+                  ${selectField({ id: 'field-state', name: 'state', label: FIELD_LABELS.state, value: values.state || '', error: errors.state || '' })}
+                  ${textField({ id: 'field-pin', name: 'pin', label: FIELD_LABELS.pin, value: values.pin || '', error: errors.pin || '', autocomplete: 'postal-code', inputmode: 'numeric', placeholder: '411001', maxlength: 6 })}
+                </div>
+              </fieldset>
+
+              <div class="checkout-commit">
+                <button type="submit" class="button button--ink button--large button--full" data-checkout-submit>
+                  <span data-checkout-submit-label>Place demo order · ${formatINR(totals.totalPaise)}</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+                <p class="checkout-status" data-checkout-status role="status" aria-live="polite"></p>
+                <p class="checkout-fine">No payment is collected. This creates a demo receipt only. By placing the order you agree to the demo terms above.</p>
+              </div>
+            </form>
+
+            <p class="checkout-lookup">Already ordered? <a href="/receipt">Find your receipt <span aria-hidden="true">→</span></a></p>
+          </div>
+        </div>
+
+        <div class="demo-notes reveal">
+          <div>
+            <p class="eyebrow">Built in this demo</p>
+            <p>Guest checkout, server-side totals, a revision check for stale tabs, an idempotent order, and a receipt that requires authorization.</p>
+          </div>
+          <div>
+            <p class="eyebrow">Simulated decisions</p>
+            <p>${formatINR(PRODUCT.unitPricePaise)} price, ${formatINR(PRODUCT.deliveryPaise)} delivery, ${PRODUCT.maxQuantity}-unit limit, Indian address fields, two named routes, and the missed-round policy.</p>
+          </div>
+          <div>
+            <p class="eyebrow">Still a prototype question</p>
+            <p>Whether dogs discover the cue, choose to re-engage, and whether the mechanism is reliable for unsupervised use. Those need physical testing.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  `;
+
+  return { body, bodyData, bodyClass: hasErrors ? 'page-home has-form-errors' : 'page-home' };
+}

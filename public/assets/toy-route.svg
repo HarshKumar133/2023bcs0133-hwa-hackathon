@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="routeTitle routeDesc">
+  <title id="routeTitle">TrailTurn route diagram</title>
+  <desc id="routeDesc">A top view of the TrailTurn drum showing the Long way route in green and the Switchback route in terracotta, with the first paddle raised.</desc>
+  <defs>
+    <radialGradient id="diagramTop" cx="36%" cy="28%" r="82%">
+      <stop offset="0" stop-color="#f5e6c9"/>
+      <stop offset="0.55" stop-color="#e4c99f"/>
+      <stop offset="1" stop-color="#caa574"/>
+    </radialGradient>
+    <linearGradient id="diagramPaddle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#bfcdb5"/>
+      <stop offset="1" stop-color="#8fa383"/>
+    </linearGradient>
+    <linearGradient id="diagramPaddleSide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#708668"/>
+      <stop offset="1" stop-color="#4f664b"/>
+    </linearGradient>
+    <radialGradient id="diagramBrass" cx="34%" cy="28%" r="78%">
+      <stop offset="0" stop-color="#f2dda2"/>
+      <stop offset="0.58" stop-color="#c9a45c"/>
+      <stop offset="1" stop-color="#8f692b"/>
+    </radialGradient>
+    <marker id="arrowMoss" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#2f4a38"/>
+    </marker>
+    <marker id="arrowClay" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#b45f3e"/>
+    </marker>
+    <filter id="diagramShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#3a2a17" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="900" fill="#e8dfd0"/>
+  <g stroke="#20211c" stroke-width="0.8" opacity="0.09">
+    <path d="M0 100h1200M0 200h1200M0 300h1200M0 400h1200M0 500h1200M0 600h1200M0 700h1200M0 800h1200"/>
+    <path d="M100 0v900M200 0v900M300 0v900M400 0v900M500 0v900M600 0v900M700 0v900M800 0v900M900 0v900M1000 0v900M1100 0v900"/>
+  </g>
+
+  <circle cx="600" cy="450" r="332" fill="none" stroke="#20211c" stroke-width="1" stroke-dasharray="3 9" opacity="0.28"/>
+  <circle cx="600" cy="450" r="302" fill="none" stroke="#20211c" stroke-width="1.2" opacity="0.16"/>
+
+  <g font-family="Helvetica, Arial, sans-serif" font-size="12" letter-spacing="2" fill="#20211c" opacity="0.55">
+    <text x="600" y="104" text-anchor="middle">0 MIN</text>
+    <text x="1010" y="456" text-anchor="middle">15 MIN</text>
+    <text x="600" y="814" text-anchor="middle">30 MIN</text>
+    <text x="190" y="456" text-anchor="middle">45 MIN</text>
+  </g>
+  <g fill="#b45f3e">
+    <circle cx="600" cy="126" r="4"/>
+    <circle cx="982" cy="450" r="4"/>
+    <circle cx="600" cy="786" r="4"/>
+    <circle cx="218" cy="450" r="4"/>
+  </g>
+
+  <g filter="url(#diagramShadow)">
+    <circle cx="600" cy="450" r="270" fill="url(#diagramTop)" stroke="#2b241b" stroke-width="2.6"/>
+    <circle cx="600" cy="450" r="254" fill="none" stroke="#b8874c" stroke-width="1.4" opacity="0.7"/>
+    <circle cx="600" cy="450" r="236" fill="none" stroke="#8c6237" stroke-width="0.8" opacity="0.3"/>
+  </g>
+
+  <g opacity="0.22" fill="none" stroke="#9b6f41" stroke-width="1">
+    <path d="M420 424c32-32 104-48 174-48 60 0 128 14 164 38"/>
+    <path d="M400 462c40-28 112-42 190-42 68 0 140 14 184 38"/>
+    <path d="M436 516c42-24 100-34 160-34 56 0 112 10 152 28"/>
+  </g>
+
+  <path d="M600 250 C730 320 820 440 818 560 C700 626 500 626 382 560" fill="none" stroke="#2f4a38" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="9 9" marker-end="url(#arrowMoss)" opacity="0.9"/>
+  <path d="M600 250 C470 320 380 440 382 560 C500 626 700 626 818 560" fill="none" stroke="#b45f3e" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="2 11" marker-end="url(#arrowClay)" opacity="0.95"/>
+
+  <g transform="translate(835 590)">
+    <ellipse cx="0" cy="8" rx="58" ry="34" fill="#7d4b22" opacity="0.26"/>
+    <path d="M0 -46C25 -46 46 -26 46 0C46 28 25 46 0 46C-25 46 -46 28 -46 0C-46 -26 -25 -46 0 -46Z" fill="url(#diagramPaddle)" stroke="#2b241b" stroke-width="2" opacity="0.94"/>
+    <circle cx="0" cy="0" r="3" fill="#52684d" opacity="0.6"/>
+    <text x="0" y="7" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="23" font-weight="700" fill="#2f4a38" opacity="0.7">2</text>
+  </g>
+  <g transform="translate(365 590)">
+    <ellipse cx="0" cy="8" rx="58" ry="34" fill="#7d4b22" opacity="0.26"/>
+    <path d="M0 -46C25 -46 46 -26 46 0C46 28 25 46 0 46C-25 46 -46 28 -46 0C-46 -26 -25 -46 0 -46Z" fill="url(#diagramPaddle)" stroke="#2b241b" stroke-width="2" opacity="0.94"/>
+    <circle cx="0" cy="0" r="3" fill="#52684d" opacity="0.6"/>
+    <text x="0" y="7" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="23" font-weight="700" fill="#2f4a38" opacity="0.7">3</text>
+  </g>
+
+  <g transform="translate(600 250)">
+    <ellipse cx="0" cy="30" rx="62" ry="30" fill="#3a2a17" opacity="0.2"/>
+    <path d="M0 16C24 16 44 36 44 62C44 88 24 106 0 106C-24 106 -44 88 -44 62C-44 36 -24 16 0 16Z" fill="url(#diagramPaddleSide)" stroke="#2b241b" stroke-width="2"/>
+    <path d="M0 -62C26 -62 48 -42 48 -14C48 12 26 34 0 34C-26 34 -48 12 -48 -14C-48 -42 -26 -62 0 -62Z" fill="url(#diagramPaddle)" stroke="#2b241b" stroke-width="2.2"/>
+    <path d="M-34 -30C-24 -46 -8 -52 8 -50" fill="none" stroke="#e6efdf" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+    <text x="0" y="-5" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#2f4a38">1</text>
+  </g>
+
+  <g transform="translate(600 450)">
+    <circle cx="0" cy="0" r="56" fill="url(#diagramBrass)" stroke="#2b241b" stroke-width="2"/>
+    <circle cx="0" cy="0" r="43" fill="none" stroke="#7d5b24" stroke-width="1" opacity="0.55"/>
+    <circle cx="0" cy="0" r="8" fill="#7d5b24" opacity="0.75"/>
+    <path d="M-22 8C-10 -8 10 -8 22 8" fill="none" stroke="#7d5b24" stroke-width="1.6" stroke-linecap="round" opacity="0.7"/>
+    <circle cx="-22" cy="8" r="3" fill="#7d5b24" opacity="0.8"/>
+    <circle cx="22" cy="8" r="3" fill="#7d5b24" opacity="0.8"/>
+    <text x="0" y="-26" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="8" letter-spacing="1.8" fill="#5e4519" opacity="0.72">TRAILTURN</text>
+  </g>
+
+  <g font-family="Helvetica, Arial, sans-serif">
+    <text x="862" y="302" fill="#2f4a38" font-size="15" letter-spacing="2.4">LONG WAY</text>
+    <text x="862" y="324" fill="#2f4a38" font-size="11" letter-spacing="1.4" opacity="0.8">1 → 2 → 3</text>
+    <text x="210" y="302" text-anchor="end" fill="#b45f3e" font-size="15" letter-spacing="2.4">SWITCHBACK</text>
+    <text x="210" y="324" text-anchor="end" fill="#b45f3e" font-size="11" letter-spacing="1.4" opacity="0.9">1 → 3 → 2</text>
+  </g>
+
+  <g transform="translate(860 700)">
+    <rect x="0" y="0" width="250" height="112" rx="12" fill="#fbf7ef" stroke="#20211c" stroke-width="1.2" opacity="0.95"/>
+    <text x="18" y="26" font-family="Helvetica, Arial, sans-serif" font-size="9" letter-spacing="2" fill="#6f6d61">ROUTE CARD</text>
+    <path d="M24 52h48" stroke="#2f4a38" stroke-width="2.4" stroke-dasharray="6 6"/>
+    <text x="82" y="56" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#2f4a38">Long way</text>
+    <path d="M24 78h48" stroke="#b45f3e" stroke-width="2.4" stroke-dasharray="2 7"/>
+    <text x="82" y="82" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#b45f3e">Switchback</text>
+    <text x="18" y="102" font-family="Helvetica, Arial, sans-serif" font-size="8" letter-spacing="1.2" fill="#6f6d61">ONE STEP HELD · FOUR CHANCES</text>
+  </g>
+
+  <g font-family="Helvetica, Arial, sans-serif" font-size="9" letter-spacing="1.6" fill="#20211c" opacity="0.5">
+    <path d="M600 126v-30" stroke="#20211c" stroke-width="1" opacity="0.3"/>
+    <text x="600" y="86" text-anchor="middle">RAISED PADDLE</text>
+  </g>
+</svg>
