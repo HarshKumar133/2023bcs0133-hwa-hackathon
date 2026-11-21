@@ -709,7 +709,6 @@ export function createApp({
 
       if (path === '/api/orders' && method === 'POST') {
         requireOrigin(req);
-        checkRateLimit(orderLimiter, req);
         const body = await parseJsonBody(req);
         verifyCsrf(req, req.headers['x-csrf-token'] || body.csrf);
 
@@ -723,6 +722,7 @@ export function createApp({
           return;
         }
 
+        checkRateLimit(orderLimiter, req);
         const rawKey = idempotencyFrom(body.idempotencyKey);
         if (!rawKey) {
           sendJson(res, 422, {
@@ -800,7 +800,6 @@ export function createApp({
 
       if (path === '/checkout' && method === 'POST') {
         requireOrigin(req);
-        checkRateLimit(orderLimiter, req);
         const form = await parseFormBody(req);
         verifyCsrf(req, form.csrf);
         const customerCheck = validateCustomer(form);
@@ -815,6 +814,7 @@ export function createApp({
           return;
         }
 
+        checkRateLimit(orderLimiter, req);
         const rawKey = idempotencyFrom(form.idempotencyKey);
         if (!rawKey) throw new HttpError(400, 'missing_key', 'Reload checkout before placing this order.');
         const key = guestKey(req, rawKey);

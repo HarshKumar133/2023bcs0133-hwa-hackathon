@@ -1,3 +1,5 @@
+import { INDIAN_STATES } from '../validation.js';
+
 export function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -53,6 +55,6 @@ export const FIELD_LABELS = {
   address1: 'Address line 1',
   address2: 'Address line 2',
   city: 'City',
-  state: { label: 'State', options: ['Maharashtra'] },
+  state: { label: 'State', options: INDIAN_STATES },
   pin: 'PIN',
 };

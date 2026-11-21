@@ -54,6 +54,16 @@ test('Indian address and basket quantity validation', () => {
   for (const q of [-1, 6, 1.5, '2abc', null, '', ' ']) assert.equal(validateQuantity(q).ok, false);
 });
 
+test('checkout renders its state label and all supported Indian regions', async t => {
+  const app = await launch(); t.after(app.close);
+  const response = await app.request('/checkout');
+  const html = await response.text();
+  assert.match(html, /for="field-state">State/);
+  assert.match(html, /<option value="Arunachal Pradesh">Arunachal Pradesh<\/option>/);
+  assert.match(html, /<option value="Lakshadweep">Lakshadweep<\/option>/);
+  assert.doesNotMatch(html, /\[object Object\]/);
+});
+
 test('cart writes require revision, session token and same origin', async t => {
   const app = await launch(); t.after(app.close);
   const g = await guest(app);
@@ -145,6 +155,21 @@ test('ordinary HTML checkout works for one item and preserves invalid input', as
   assert.equal(r.status, 303);
   assert.match(r.headers.get('location'), /^\/receipt\/TT-/);
   assert.equal(app.db.prepare('SELECT total_paise FROM orders').get().total_paise, 154800);
+});
+
+test('invalid checkout attempts do not consume the order rate limit', async t => {
+  const app = await launch(); t.after(app.close);
+  const g = await guest(app);
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const response = await g.form('/checkout', { cartId: g.cartId, revision: 1 });
+    assert.equal(response.status, 422);
+  }
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const response = await g.json('/api/orders', {}, g.etag);
+    assert.equal(response.status, 422);
+  }
 });
 
 test('removing the last unit persists zero and neither checkout can commit it', async t => {

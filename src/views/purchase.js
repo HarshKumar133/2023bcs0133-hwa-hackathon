@@ -87,7 +87,7 @@ function deliveryFields(values, errors) {
                 </div>
                 <div class="field-grid field-grid--three">
                   ${textField({ id: 'field-city', name: 'city', label: FIELD_LABELS.city, value: values.city || '', error: errors.city || '', autocomplete: 'address-level2', placeholder: 'Pune', maxlength: 60 })}
-                  ${selectField({ id: 'field-state', name: 'state', label: FIELD_LABELS.state, value: values.state || '', error: errors.state || '' })}
+                  ${selectField({ id: 'field-state', name: 'state', label: FIELD_LABELS.state.label, value: values.state || '', error: errors.state || '' })}
                   ${textField({ id: 'field-pin', name: 'pin', label: FIELD_LABELS.pin, value: values.pin || '', error: errors.pin || '', autocomplete: 'postal-code', inputmode: 'numeric', placeholder: '411001', maxlength: 6 })}
                 </div>
               </fieldset>
