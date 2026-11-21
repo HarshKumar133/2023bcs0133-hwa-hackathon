@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 700" role="img" aria-labelledby="liftTitle liftDesc">
+  <title id="liftTitle">TrailTurn, low side view</title>
+  <desc id="liftDesc">A low side view of the forest-green TrailTurn. One cream paddle is lifted at the back, two rest flat on the body, and a cream reward cup is fixed at the front.</desc>
+  <defs>
+    <filter id="liftShadow" x="-30%" y="-80%" width="160%" height="260%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+  </defs>
+
+  <ellipse cx="450" cy="590" rx="300" ry="38" fill="#20251F" opacity="0.13" filter="url(#liftShadow)"/>
+
+  <path d="M130 430 C130 368 242 334 450 334 C658 334 770 368 770 430 L770 496 C770 562 658 596 450 596 C242 596 130 562 130 496 Z" fill="#294C3C" stroke="#20251F" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M148 470 C240 534 660 534 752 470" fill="none" stroke="#1F3A2E" stroke-width="10" opacity="0.4"/>
+  <path d="M150 478 C244 542 656 542 750 478" fill="none" stroke="#F5F0E5" stroke-width="2" opacity="0.18"/>
+  <ellipse cx="450" cy="350" rx="310" ry="44" fill="#355C48" stroke="#20251F" stroke-width="4"/>
+  <ellipse cx="450" cy="350" rx="286" ry="34" fill="none" stroke="#F5F0E5" stroke-width="2" opacity="0.4"/>
+
+  <path d="M312 350 C386 374 514 374 588 350" fill="none" stroke="#B93827" stroke-width="4" stroke-linecap="round" stroke-dasharray="10 9" opacity="0.9"/>
+
+  <g transform="translate(300 344)">
+    <rect x="-62" y="-28" width="124" height="48" rx="20" fill="#1F3A2E" opacity="0.7"/>
+    <rect x="-34" y="-14" width="68" height="26" rx="12" fill="#F5F0E5" opacity="0.16"/>
+  </g>
+  <g transform="translate(300 342) rotate(-10)">
+    <rect x="-64" y="-154" width="128" height="180" rx="58" fill="#1F3A2E" opacity="0.3"/>
+    <rect x="-62" y="-160" width="124" height="176" rx="58" fill="#F1E7D0" stroke="#20251F" stroke-width="5"/>
+    <path d="M-34 -128 C-20 -146 8 -150 26 -140" fill="none" stroke="#FBF7EF" stroke-width="7" stroke-linecap="round" opacity="0.8"/>
+    <text x="0" y="-56" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="46" fill="#20251F">1</text>
+  </g>
+
+  <g transform="translate(500 350) rotate(3)">
+    <rect x="-72" y="-24" width="144" height="60" rx="28" fill="#1F3A2E" opacity="0.45"/>
+    <rect x="-70" y="-34" width="140" height="58" rx="28" fill="#F1E7D0" stroke="#20251F" stroke-width="4"/>
+    <text x="0" y="7" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="34" fill="#20251F">2</text>
+  </g>
+
+  <g transform="translate(636 362) rotate(7)">
+    <rect x="-70" y="-22" width="140" height="56" rx="26" fill="#1F3A2E" opacity="0.45"/>
+    <rect x="-68" y="-32" width="136" height="54" rx="26" fill="#F1E7D0" stroke="#20251F" stroke-width="4"/>
+    <text x="0" y="8" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="32" fill="#20251F">3</text>
+  </g>
+
+  <g transform="translate(730 500)">
+    <rect x="-26" y="-42" width="52" height="50" rx="12" fill="#294C3C" stroke="#20251F" stroke-width="4"/>
+    <path d="M-66 -10 C-66 46 66 46 66 -10" fill="#F1E7D0" stroke="#20251F" stroke-width="4" stroke-linejoin="round"/>
+    <ellipse cx="0" cy="-10" rx="66" ry="21" fill="#F1E7D0" stroke="#20251F" stroke-width="4"/>
+    <ellipse cx="0" cy="-10" rx="49" ry="14" fill="#B93827" stroke="#20251F" stroke-width="3"/>
+    <circle cx="-16" cy="-11" r="5" fill="#F5F0E5"/>
+    <circle cx="8" cy="-7" r="5" fill="#F5F0E5"/>
+    <circle cx="22" cy="-13" r="4" fill="#F5F0E5"/>
+  </g>
+</svg>

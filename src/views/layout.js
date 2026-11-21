@@ -6,13 +6,13 @@ export function logoMark(className = 'brand-mark') {
   return `
     <span class="${escapeAttr(className)}" aria-hidden="true">
       <svg viewBox="0 0 44 44" role="presentation" focusable="false">
-        <circle cx="22" cy="22" r="20.5" fill="none" stroke="currentColor" stroke-width="1.4"/>
-        <path d="M13.5 15.5c5.8-4.3 11.5 3.2 17.4-1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="2.5 3"/>
-        <path d="M30.9 14.2c2.4 5.4-3.1 9.5 0.8 14.7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="2.5 3"/>
-        <path d="M31.7 28.9c-5.5 2.3-9.6-2.9-14.7 0.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="2.5 3"/>
-        <circle cx="13.5" cy="15.5" r="2.6" fill="currentColor"/>
-        <circle cx="31.7" cy="28.9" r="2.6" fill="currentColor"/>
-        <circle cx="17" cy="29.5" r="2.6" fill="currentColor" opacity="0.35"/>
+        <circle cx="22" cy="22" r="20" fill="#294C3C" stroke="#20251F" stroke-width="1.4"/>
+        <ellipse cx="22" cy="22" rx="15" ry="10" fill="none" stroke="#F5F0E5" stroke-width="0.9" opacity="0.38"/>
+        <rect x="17.5" y="8" width="9" height="7.5" rx="3.6" fill="#F5F0E5" stroke="#20251F" stroke-width="1"/>
+        <rect x="8.5" y="23" width="9" height="7" rx="3.4" fill="#F5F0E5" stroke="#20251F" stroke-width="1" transform="rotate(-34 13 26.5)"/>
+        <rect x="26.5" y="23" width="9" height="7" rx="3.4" fill="#F5F0E5" stroke="#20251F" stroke-width="1" transform="rotate(34 31 26.5)"/>
+        <path d="M17 32.5c0 4.6 10 4.6 10 0" fill="#F5F0E5" stroke="#20251F" stroke-width="1.1"/>
+        <ellipse cx="22" cy="32.5" rx="5" ry="1.8" fill="#B93827" stroke="#20251F" stroke-width="0.8"/>
       </svg>
     </span>
   `;
@@ -41,7 +41,7 @@ export function siteHeader({ cartQuantity = 0, current = '' } = {}) {
         </nav>
         <div class="header-actions">
           <span class="header-price">${formatINR(PRODUCT.unitPricePaise)}</span>
-          <a class="button button--small button--ink" href="/#buy">
+          <a class="button button--small button--tomato" href="/#buy">
             <span>Buy</span>
             <span class="button-count" data-header-qty>${escapeHtml(cartQuantity)}</span>
           </a>
@@ -108,7 +108,7 @@ export function page({
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHtml(title)}</title>
   <meta name="description" content="${escapeAttr(description)}">
-  <meta name="theme-color" content="#f3eee4">
+  <meta name="theme-color" content="#f5f0e5">
   <meta name="color-scheme" content="light">
   ${noindex ? '<meta name="robots" content="noindex, nofollow">' : ''}
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">

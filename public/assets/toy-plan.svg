@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="planTitle planDesc">
+  <title id="planTitle">TrailTurn, overhead route view</title>
+  <desc id="planDesc">Overhead view of the forest-green TrailTurn. Three cream paddles sit in a shallow arc around a centre hub, a tomato-red route links paddle one to paddle two to paddle three, and a reward cup sits at the front.</desc>
+  <defs>
+    <filter id="planShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+  </defs>
+
+  <ellipse cx="400" cy="742" rx="252" ry="30" fill="#20251F" opacity="0.12" filter="url(#planShadow)"/>
+
+  <circle cx="400" cy="390" r="300" fill="#294C3C" stroke="#20251F" stroke-width="5"/>
+  <circle cx="400" cy="390" r="280" fill="none" stroke="#F5F0E5" stroke-width="2.5" opacity="0.4"/>
+  <circle cx="400" cy="390" r="250" fill="#355C48" stroke="#20251F" stroke-width="2" opacity="0.7"/>
+
+  <g stroke="#F5F0E5" stroke-width="2" opacity="0.2">
+    <path d="M400 112 L400 130"/>
+    <path d="M400 650 L400 668"/>
+    <path d="M122 390 L140 390"/>
+    <path d="M660 390 L678 390"/>
+  </g>
+
+  <path d="M400 178 L258 512" fill="none" stroke="#B93827" stroke-width="5" stroke-linecap="round" stroke-dasharray="11 10"/>
+  <path d="M258 512 L542 512" fill="none" stroke="#B93827" stroke-width="5" stroke-linecap="round" stroke-dasharray="11 10"/>
+  <circle cx="400" cy="178" r="7" fill="#B93827"/>
+  <circle cx="258" cy="512" r="7" fill="#B93827"/>
+  <circle cx="542" cy="512" r="7" fill="#B93827"/>
+
+  <g transform="translate(400 178)">
+    <rect x="-76" y="-48" width="152" height="96" rx="48" fill="#1F3A2E" opacity="0.5"/>
+    <rect x="-76" y="-58" width="152" height="96" rx="48" fill="#F1E7D0" stroke="#20251F" stroke-width="5"/>
+    <path d="M-50 -32 C-32 -46 -8 -48 10 -42" fill="none" stroke="#FBF7EF" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+    <text x="0" y="12" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="40" fill="#20251F">1</text>
+  </g>
+
+  <g transform="translate(258 512) rotate(-47)">
+    <rect x="-76" y="-48" width="152" height="96" rx="48" fill="#1F3A2E" opacity="0.5"/>
+    <rect x="-76" y="-58" width="152" height="96" rx="48" fill="#F1E7D0" stroke="#20251F" stroke-width="5"/>
+    <path d="M-50 -32 C-32 -46 -8 -48 10 -42" fill="none" stroke="#FBF7EF" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+    <text x="0" y="12" text-anchor="middle" transform="rotate(47)" font-family="Georgia, 'Times New Roman', serif" font-size="40" fill="#20251F">2</text>
+  </g>
+
+  <g transform="translate(542 512) rotate(47)">
+    <rect x="-76" y="-48" width="152" height="96" rx="48" fill="#1F3A2E" opacity="0.5"/>
+    <rect x="-76" y="-58" width="152" height="96" rx="48" fill="#F1E7D0" stroke="#20251F" stroke-width="5"/>
+    <path d="M-50 -32 C-32 -46 -8 -48 10 -42" fill="none" stroke="#FBF7EF" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+    <text x="0" y="12" text-anchor="middle" transform="rotate(-47)" font-family="Georgia, 'Times New Roman', serif" font-size="40" fill="#20251F">3</text>
+  </g>
+
+  <g transform="translate(400 390)">
+    <circle cx="0" cy="0" r="72" fill="#F1E7D0" stroke="#20251F" stroke-width="5"/>
+    <circle cx="0" cy="0" r="58" fill="none" stroke="#20251F" stroke-width="1.5" opacity="0.25"/>
+    <path d="M-30 12 C-14 -18 14 20 32 -10" fill="none" stroke="#294C3C" stroke-width="6" stroke-linecap="round" stroke-dasharray="7 8"/>
+    <circle cx="-30" cy="12" r="7" fill="#294C3C"/>
+    <circle cx="32" cy="-10" r="7" fill="#B93827"/>
+    <text x="0" y="44" text-anchor="middle" font-family="'Instrument Sans', Arial, sans-serif" font-size="12" letter-spacing="3" fill="#20251F">TRAILTURN</text>
+  </g>
+
+  <g transform="translate(400 690)">
+    <rect x="-34" y="-44" width="68" height="56" rx="14" fill="#294C3C" stroke="#20251F" stroke-width="4"/>
+    <path d="M-84 -8 C-84 58 84 58 84 -8" fill="#F1E7D0" stroke="#20251F" stroke-width="5" stroke-linejoin="round"/>
+    <ellipse cx="0" cy="-8" rx="84" ry="27" fill="#F1E7D0" stroke="#20251F" stroke-width="5"/>
+    <ellipse cx="0" cy="-8" rx="63" ry="18" fill="#B93827" stroke="#20251F" stroke-width="3"/>
+    <circle cx="-22" cy="-10" r="6" fill="#F5F0E5"/>
+    <circle cx="8" cy="-4" r="6" fill="#F5F0E5"/>
+    <circle cx="28" cy="-13" r="5" fill="#F5F0E5"/>
+  </g>
+</svg>

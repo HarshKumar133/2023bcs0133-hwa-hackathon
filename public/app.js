@@ -473,48 +473,36 @@
       summary.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'center' });
     });
   }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    initHeader();
-    initReveal();
-    initGallery();
-    initDemo();
-    initPrint();
-    initServerErrorFocus();
-    initCheckout(initCart());
-  });
-
   // Cart and checkout are defined below so the demo can load independently.
   function initCart() {
-    const page = document.body.dataset.page;
-    if (page !== 'home') return;
-
-    const summary = $('.order-summary');
     const qtyValue = $('[data-qty-value]');
     const qtyDecrease = $('[data-qty-decrease]');
     const qtyIncrease = $('[data-qty-increase]');
+    if (!qtyValue || !qtyDecrease || !qtyIncrease) return;
+
+    const maxQty = Number(document.body.dataset.maxQty || 5);
+    const csrf = document.body.dataset.csrf || '';
     const subtotalEl = $('[data-subtotal]');
-    const deliveryEl = $('[data-delivery]', summary);
+    const deliveryEl = $('[data-delivery]');
     const totalEl = $('[data-total]');
     const summaryQtyEl = $('[data-summary-qty]');
     const headerQtyEl = $('[data-header-qty]');
+    const submit = $('[data-checkout-submit]');
     const submitLabel = $('[data-checkout-submit-label]');
     const cartNotice = $('[data-cart-notice]');
     const checkoutStatus = $('[data-checkout-status]');
     const hiddenCartId = $('[data-cart-id-input]');
     const hiddenRevision = $('[data-cart-revision-input]');
-    const hiddenIdempotency = $('[data-idempotency-input]');
-
-    if (!qtyValue || !qtyDecrease || !qtyIncrease || !subtotalEl || !deliveryEl || !totalEl) return;
-
-    const maxQty = Number(document.body.dataset.maxQty);
-    const csrf = document.body.dataset.csrf || '';
+    const buyQuantity = $('[data-buy-quantity]');
+    const buyLabel = $('[data-buy-label]');
+    const checkoutLink = $('[data-checkout-link]');
+    const buyNote = $('.buy-note');
 
     const cart = {
       id: document.body.dataset.cartId || null,
       revision: Number(document.body.dataset.cartRevision || 0),
-      quantity: Number(qtyValue.textContent),
-      totals: JSON.parse(document.body.dataset.totals),
+      quantity: Number(qtyValue.textContent || 0),
+      totals: JSON.parse(document.body.dataset.totals || '{}'),
     };
 
     let updating = false;
@@ -554,46 +542,45 @@
     }
 
     function updateTotals(quantity) {
-      const { subtotalPaise, deliveryPaise, totalPaise } = cart.totals;
+      const { subtotalPaise = 0, deliveryPaise = 0, totalPaise = 0 } = cart.totals;
       qtyValue.textContent = String(quantity);
       if (summaryQtyEl) summaryQtyEl.textContent = String(quantity);
       if (headerQtyEl) headerQtyEl.textContent = String(quantity);
-      subtotalEl.textContent = money(subtotalPaise);
-      deliveryEl.textContent = money(deliveryPaise);
-      totalEl.textContent = money(totalPaise);
-      $('[data-empty-basket]').hidden = quantity !== 0;
-      $('[data-checkout-submit]').disabled = updating || quantity === 0;
-      if (submitLabel) submitLabel.textContent = `Place demo order · ${totalEl.textContent}`;
+      if (subtotalEl) subtotalEl.textContent = money(subtotalPaise);
+      if (deliveryEl) deliveryEl.textContent = money(deliveryPaise);
+      if (totalEl) totalEl.textContent = money(totalPaise);
+      if (submit) submit.disabled = updating || quantity === 0;
+      if (submitLabel) submitLabel.textContent = `Place demo order · ${money(totalPaise)}`;
       qtyDecrease.disabled = updating || quantity === 0;
       qtyIncrease.disabled = updating || quantity >= maxQty;
+      if (buyQuantity) buyQuantity.value = String(Math.min(quantity + 1, maxQty));
+      if (buyLabel) buyLabel.textContent = quantity ? 'Add another' : 'Add to cart';
+      if (checkoutLink) checkoutLink.setAttribute('aria-disabled', quantity ? 'false' : 'true');
+      if (buyNote) {
+        buyNote.textContent = quantity
+          ? 'In your basket. Delivery is charged once per order.'
+          : 'No payment collected. This demo creates a receipt only.';
+      }
+      const emptyBasket = $('[data-empty-basket]');
+      if (emptyBasket) emptyBasket.hidden = quantity !== 0;
       updateHidden();
     }
 
     function setBusy(busy) {
       updating = busy;
-      $('[data-checkout-submit]').disabled = busy || cart.quantity === 0;
       qtyDecrease.disabled = busy || cart.quantity === 0;
       qtyIncrease.disabled = busy || cart.quantity >= maxQty;
-      if (summary) summary.setAttribute('aria-busy', busy ? 'true' : 'false');
-    }
-
-    function refreshIdempotencyKey() {
-      if (hiddenIdempotency) hiddenIdempotency.value = newKey();
+      if (submit) submit.disabled = busy || cart.quantity === 0;
     }
 
     function rememberCart() {
       try {
-        window.localStorage.setItem(
-          'tt_cart',
-          JSON.stringify({ id: cart.id, revision: cart.revision, at: Date.now() }),
-        );
-      } catch {
-        // Storage can be unavailable; the server remains the source of truth.
-      }
+        localStorage.setItem('tt_cart', JSON.stringify({ id: cart.id, revision: cart.revision, at: Date.now() }));
+      } catch { /* The server is the source of truth. */ }
     }
 
     async function changeQuantity(delta) {
-      if (updating || $('[data-checkout-form]').dataset.locked === 'true') return;
+      if (updating) return;
       const next = Math.min(maxQty, Math.max(0, cart.quantity + delta));
       if (next === cart.quantity) return;
 
@@ -617,7 +604,6 @@
         if (response.ok && data.cart) {
           Object.assign(cart, data.cart);
           updateTotals(cart.quantity);
-          refreshIdempotencyKey();
           rememberCart();
           setStatus('Cart updated. Total refreshed.');
           return;
@@ -628,11 +614,8 @@
             Object.assign(cart, data.cart);
             updateTotals(cart.quantity);
             rememberCart();
-          } else {
-            setNotice('Reload the shop to see the current basket.');
-            return;
           }
-          if (data.code === 'cart_completed' && data.order && data.order.receiptUrl) {
+          if (data.code === 'cart_completed' && data.order?.receiptUrl) {
             setNotice('This cart has already been ordered. Open your receipt.', {
               href: data.order.receiptUrl,
               label: 'Open receipt →',
@@ -642,16 +625,16 @@
             setNotice('This cart changed in another tab. We refreshed the total. Review it and try again.');
             setStatus('Cart refreshed. Review the total.');
           }
-          refreshIdempotencyKey();
-          if (cartNotice) {
-            cartNotice.focus?.();
-            cartNotice.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'center' });
-          }
           return;
         }
 
         if (response.status === 422 && data.errors?.quantity) {
           setStatus(data.errors.quantity);
+          return;
+        }
+
+        if (response.status === 428) {
+          setStatus('The cart changed. Reload the page and try again.');
           return;
         }
 
@@ -672,24 +655,21 @@
     qtyDecrease.addEventListener('click', () => changeQuantity(-1));
     qtyIncrease.addEventListener('click', () => changeQuantity(1));
 
-    window.addEventListener('storage', async (event) => {
+    window.addEventListener('storage', async event => {
       if (event.key !== 'tt_cart') return;
       try {
         const response = await fetch('/api/cart', { headers: { Accept: 'application/json' } });
         if (!response.ok) return;
         const data = await response.json();
-        if (!data.cart || $('[data-checkout-form]').dataset.locked === 'true') return;
+        if (!data.cart) return;
         const changed = data.cart.revision !== cart.revision || data.cart.id !== cart.id;
         Object.assign(cart, data.cart);
         updateTotals(cart.quantity);
         if (changed) {
-          refreshIdempotencyKey();
           setNotice('This cart was updated in another tab. We refreshed the total.');
           setStatus('Cart refreshed from another tab.');
         }
-      } catch {
-        // Leave the current view in place; the next update will surface conflicts.
-      }
+      } catch { /* Keep the current view until the next update surfaces a conflict. */ }
     });
 
     updateTotals(cart.quantity);
@@ -699,281 +679,95 @@
     };
   }
 
-  function initCheckout(applyCart) {
-    const form = $('[data-checkout-form]');
+  function initCheckout() {
+    const form = document.querySelector('[data-checkout-form]');
     if (!form) return;
 
-    const statusEl = $('[data-checkout-status]');
-    const submit = $('[data-checkout-submit]');
-    const submitLabel = $('[data-checkout-submit-label]');
+    const statusEl = document.querySelector('[data-checkout-status]');
+    const submit = document.querySelector('[data-checkout-submit]');
     const csrf = document.body.dataset.csrf || '';
-    const hiddenCartId = $('[data-cart-id-input]');
-    const hiddenRevision = $('[data-cart-revision-input]');
-    const hiddenIdempotency = $('[data-idempotency-input]');
+    const hiddenIdempotency = document.querySelector('[data-idempotency-input]');
+    const storageKey = 'tt_checkout_attempt';
 
-    function currentQuantity() {
-      const qty = $('[data-qty-value]');
-      return qty ? Number(qty.textContent || 1) : 1;
+    let pending = null;
+    try {
+      const saved = JSON.parse(window.sessionStorage.getItem(storageKey));
+      if (saved && saved.cartId && saved.idempotencyKey) pending = saved;
+    } catch { /* Same-page recovery only if storage is unavailable. */ }
+
+    function remember(attempt) {
+      pending = attempt;
+      try {
+        if (attempt) window.sessionStorage.setItem(storageKey, JSON.stringify(attempt));
+        else window.sessionStorage.removeItem(storageKey);
+      } catch { /* In-memory attempt remains usable. */ }
     }
 
     function setStatus(message) {
       if (statusEl) statusEl.textContent = message;
     }
 
-    function etag() {
-      const id = document.body.dataset.cartId || '';
-      const revision = document.body.dataset.cartRevision || '0';
-      return `"cart-${id || 'new'}-${revision}"`;
+    function refreshIdempotencyKey() {
+      if (hiddenIdempotency) hiddenIdempotency.value = newKey();
     }
 
-    const transitions = {
-      editing: { submit: 'submitting' },
-      submitting: { confirmed: 'confirmed', failure: 'recoverable-failure' },
-      'recoverable-failure': { edit: 'editing', submit: 'submitting' },
-      confirmed: {},
-    };
-    const storageKey = 'tt_checkout_attempt';
-    let pending = null;
-    try {
-      const saved = JSON.parse(sessionStorage.getItem(storageKey));
-      if (saved?.cartId && saved.idempotencyKey) pending = saved;
-    } catch { /* Storage may be unavailable; keep same-page recovery. */ }
-    let phase = pending ? 'recoverable-failure' : form.dataset.checkoutPhase;
-
-    function remember(attempt) {
-      pending = attempt;
-      try {
-        if (attempt) sessionStorage.setItem(storageKey, JSON.stringify(attempt));
-        else sessionStorage.removeItem(storageKey);
-      } catch { /* In-memory attempt remains usable. */ }
+    function setBusy(busy) {
+      if (submit) submit.disabled = busy;
+      form.querySelectorAll('fieldset').forEach(fieldset => { fieldset.disabled = busy; });
     }
 
-    function renderPhase() {
-      const busy = phase === 'submitting';
-      const locked = busy || Boolean(pending) || phase === 'confirmed';
-      form.dataset.checkoutPhase = phase;
-      form.dataset.locked = String(locked);
-      form.setAttribute('aria-busy', String(busy));
-      form.querySelectorAll('fieldset').forEach(el => { el.disabled = locked; });
-      const qty = currentQuantity();
-      $('[data-qty-increase]').disabled = locked || qty >= Number(document.body.dataset.maxQty);
-      $('[data-qty-decrease]').disabled = locked || qty === 0;
-      submit.disabled = busy || phase === 'confirmed' || (qty === 0 && !pending);
-      submitLabel.textContent = phase === 'confirmed' ? 'Order confirmed'
-        : busy ? 'Waiting for the shop…'
-        : pending ? 'Check previous order'
-        : `Place demo order · ${$('[data-total]').textContent}`;
-    }
-
-    function move(event) {
-      const next = transitions[phase][event];
-      if (!next) return false;
-      phase = next;
-      renderPhase();
-      return true;
-    }
-
-    function clearErrors() {
-      const existing = $('#checkout-errors');
-      if (existing) existing.remove();
-      $$('.field-error', form).forEach((element) => element.remove());
-      $$('.field--error', form).forEach((element) => element.classList.remove('field--error'));
-      $$('[aria-invalid="true"]', form).forEach((element) => {
-        element.removeAttribute('aria-invalid');
-        const described = element.getAttribute('aria-describedby');
-        if (!described) return;
-        const ids = described
-          .split(/\s+/)
-          .filter((id) => !id.endsWith('-error'));
-        if (ids.length) element.setAttribute('aria-describedby', ids.join(' '));
-        else element.removeAttribute('aria-describedby');
-      });
-    }
-
-    function renderErrors(errors) {
-      clearErrors();
-      const keys = Object.keys(errors || {});
-      if (!keys.length) return;
-
-      const summary = document.createElement('div');
-      summary.className = 'error-summary';
-      summary.id = 'checkout-errors';
-      summary.setAttribute('role', 'alert');
-      summary.tabIndex = -1;
-
-      const mark = document.createElement('div');
-      mark.className = 'error-summary-mark';
-      mark.setAttribute('aria-hidden', 'true');
-      mark.textContent = '!';
-
-      const copy = document.createElement('div');
-      const heading = document.createElement('h2');
-      heading.textContent = 'There is a problem with this order';
-      const list = document.createElement('ul');
-
-      keys.forEach((key) => {
-        const item = document.createElement('li');
-        const link = document.createElement('a');
-        link.href = `#field-${key}`;
-        link.textContent = errors[key];
-        item.append(link);
-        list.append(item);
-
-        const input = document.getElementById(`field-${key}`);
-        if (!input) return;
-        const field = input.closest('.field');
-        if (field) field.classList.add('field--error');
-        input.setAttribute('aria-invalid', 'true');
-
-        const errorId = `field-${key}-error`;
-        const described = (input.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
-        if (!described.includes(errorId)) described.push(errorId);
-        input.setAttribute('aria-describedby', described.join(' '));
-
-        const message = document.createElement('p');
-        message.className = 'field-error';
-        message.id = errorId;
-        message.textContent = errors[key];
-        const anchor = input.closest('.phone-input') || input;
-        anchor.insertAdjacentElement('afterend', message);
-      });
-
-      copy.append(heading, list);
-      summary.append(mark, copy);
-      form.insertBefore(summary, form.firstChild);
-      summary.focus({ preventScroll: true });
-      summary.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'center' });
+    function currentQuantity() {
+      const total = document.querySelector('[data-summary-qty]');
+      const quantity = Number(total?.textContent || 0);
+      return Number.isFinite(quantity) ? quantity : 0;
     }
 
     function collect() {
       const data = new FormData(form);
-      return {
-        fullName: String(data.get('fullName') || '').trim(),
-        email: String(data.get('email') || '').trim(),
-        phone: String(data.get('phone') || '').trim(),
-        address1: String(data.get('address1') || '').trim(),
-        address2: String(data.get('address2') || '').trim(),
-        city: String(data.get('city') || '').trim(),
-        state: String(data.get('state') || '').trim(),
-        pin: String(data.get('pin') || '').trim(),
-      };
+      const customer = {};
+      for (const [key, value] of data.entries()) customer[key] = String(value || '');
+      return customer;
     }
 
-    form.addEventListener('submit', async (event) => {
+    form.addEventListener('submit', event => {
       event.preventDefault();
-      if (submit.disabled) return;
-      if (!pending && !hiddenCartId.value) {
-        setStatus('Reload the shop to start a fresh cart before placing an order.');
+      if (submit?.disabled) return;
+      if (currentQuantity() === 0) {
+        setStatus('Choose at least one unit before placing an order.');
         return;
       }
 
-      const customer = collect(); // Disabled fieldsets are omitted from FormData.
-      const checking = Boolean(pending);
-      if (!move('submit')) return;
-      clearErrors();
-      setStatus(checking ? 'Checking whether your previous order was saved…' : 'Checking your details…');
-
       const idempotencyKey = hiddenIdempotency?.value || newKey();
       if (hiddenIdempotency) hiddenIdempotency.value = idempotencyKey;
-
-      const payload = {
-        cartId: hiddenCartId?.value || document.body.dataset.cartId || null,
-        expectedRevision: Number(hiddenRevision?.value || document.body.dataset.cartRevision || 0),
-        idempotencyKey,
-        customer,
-      };
-
-      try {
-        if (!checking) remember({ cartId: payload.cartId, idempotencyKey });
-        const response = await fetch(checking ? '/api/orders/status' : '/api/orders', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrf,
-            'If-Match': etag(),
-          },
-          body: JSON.stringify(checking ? pending : payload),
-          signal: AbortSignal.timeout(20000),
-        });
-
-        const data = await response.json().catch(() => ({}));
-
-        if (response.ok && data.order?.receiptUrl) {
-          remember(null);
-          move('confirmed');
-          setStatus('Order placed. Opening your receipt…');
-          window.location.assign(data.order.receiptUrl);
-          return;
-        }
-
-        if (checking) {
-          if (response.ok && data.order === null) {
-            if (hiddenIdempotency && hiddenCartId?.value === pending.cartId) hiddenIdempotency.value = pending.idempotencyKey;
-            remember(null);
-            setStatus('No saved order was found for this attempt. Review your cart and details before submitting.');
-          } else {
-            setStatus('Order status is still unknown. Check again in a moment.');
-          }
-          move('failure');
-          return;
-        }
-        // Only a recognized rejection establishes that the write did not succeed.
-        if (![400, 403, 404, 409, 422, 428, 429].includes(response.status) || !data.code) {
-          throw new Error('Uncertain order outcome');
-        }
-        remember(null);
-        move('failure');
-        if (response.status === 422 && data.errors) {
-          renderErrors(data.errors);
-          setStatus('Check the highlighted delivery details.');
-          return;
-        }
-
-        if (response.status === 409) {
-          if (!data.cart) {
-            setStatus('Reload the shop to review the current basket.');
-            return;
-          }
-          applyCart(data.cart);
-          if (hiddenIdempotency) hiddenIdempotency.value = newKey();
-          const notice = $('[data-cart-notice]');
-          if (notice) {
-            notice.textContent =
-              'This cart changed somewhere else. We refreshed the total. Review it and place the order again.';
-            notice.hidden = false;
-            notice.focus?.();
-            notice.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'center' });
-          }
-          setStatus('Cart refreshed. Review the total and try again.');
-          return;
-        }
-
-        if (response.status === 428) {
-          setStatus('The cart changed. Reload the page and try again.');
-          return;
-        }
-
-        if (response.status === 429) {
-          setStatus('Too many attempts. Wait a minute and try again.');
-          return;
-        }
-
-        if (response.status === 403) {
-          setStatus('Your session expired. Reload the page and try again.');
-          return;
-        }
-
-        setStatus('We could not place the order. Try again.');
-      } catch {
-        move('failure');
-        setStatus('The shop has not confirmed the outcome. Check the previous order before submitting again.');
-      }
+      const formData = new FormData(form);
+      formData.set('idempotencyKey', idempotencyKey);
+      const attempted = Object.fromEntries(formData.entries());
+      attempted.idempotencyKey = idempotencyKey;
+      remember(attempted);
+      setBusy(true);
+      setStatus('Sending the checkout form…');
+      form.submit();
     });
 
-    form.addEventListener('input', () => {
-      if (!pending && phase === 'recoverable-failure') move('edit');
-    });
-    renderPhase();
-    if (pending) setStatus('A previous checkout has no confirmed outcome. Check it before placing another order.');
+    if (pending) {
+      setStatus('A previous checkout has no confirmed outcome. Check it before placing another order.');
+      window.addEventListener('pageshow', () => {
+        if (!pending) return;
+        setBusy(true);
+        setStatus('Waiting for the shop to confirm a previous order…');
+        form.submit();
+      });
+    }
   }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initHeader();
+    initReveal();
+    initGallery();
+    initDemo();
+    initPrint();
+    initServerErrorFocus();
+    initCheckout();
+    initCart();
+  });
 })();

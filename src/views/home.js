@@ -1,109 +1,7 @@
 import { PRODUCT, totalsFor } from '../pricing.js';
 import { formatINR } from './money.js';
 import { escapeAttr, escapeHtml } from '../security.js';
-import { INDIAN_STATES } from '../validation.js';
 import { sectionLabel } from './layout.js';
-
-const FIELD_LABELS = {
-  fullName: 'Full name',
-  email: 'Email',
-  phone: 'Mobile number',
-  address1: 'Address line 1',
-  address2: 'Address line 2',
-  city: 'City',
-  state: 'State or union territory',
-  pin: 'PIN code',
-};
-
-function errorSummary(errors) {
-  const keys = Object.keys(errors || {});
-  if (!keys.length) return '';
-  return `
-    <div class="error-summary" id="checkout-errors" role="alert" tabindex="-1">
-      <div class="error-summary-mark" aria-hidden="true">!</div>
-      <div>
-        <h2>There is a problem with this order</h2>
-        <ul>
-          ${keys.map((key) => `<li><a href="#field-${escapeAttr(key)}">${escapeHtml(errors[key])}</a></li>`).join('')}
-        </ul>
-      </div>
-    </div>
-  `;
-}
-
-function describedBy(id, help, error) {
-  return [help ? `${id}-help` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ');
-}
-
-function textField({
-  id,
-  name,
-  label,
-  value = '',
-  error = '',
-  type = 'text',
-  autocomplete = '',
-  inputmode = '',
-  placeholder = '',
-  help = '',
-  required = true,
-  maxlength = 120,
-  extra = '',
-}) {
-  const described = describedBy(id, help, error);
-  return `
-    <div class="field${error ? ' field--error' : ''}">
-      <label for="${escapeAttr(id)}">${escapeHtml(label)}${required ? '<span class="req" aria-hidden="true">*</span>' : '<span class="optional">Optional</span>'}</label>
-      ${help ? `<p class="field-help" id="${escapeAttr(id)}-help">${escapeHtml(help)}</p>` : ''}
-      <input
-        id="${escapeAttr(id)}"
-        name="${escapeAttr(name)}"
-        type="${escapeAttr(type)}"
-        value="${escapeAttr(value)}"
-        ${autocomplete ? `autocomplete="${escapeAttr(autocomplete)}"` : ''}
-        ${inputmode ? `inputmode="${escapeAttr(inputmode)}"` : ''}
-        ${placeholder ? `placeholder="${escapeAttr(placeholder)}"` : ''}
-        ${maxlength ? `maxlength="${escapeAttr(maxlength)}"` : ''}
-        ${required ? 'required' : ''}
-        ${error ? 'aria-invalid="true"' : ''}
-        ${described ? `aria-describedby="${escapeAttr(described)}"` : ''}
-        ${extra}
-      >
-      ${error ? `<p class="field-error" id="${escapeAttr(id)}-error">${escapeHtml(error)}</p>` : ''}
-    </div>
-  `;
-}
-
-function selectField({ id, name, label, value, error, help }) {
-  const described = describedBy(id, help, error);
-  return `
-    <div class="field${error ? ' field--error' : ''}">
-      <label for="${escapeAttr(id)}">${escapeHtml(label)}<span class="req" aria-hidden="true">*</span></label>
-      ${help ? `<p class="field-help" id="${escapeAttr(id)}-help">${escapeHtml(help)}</p>` : ''}
-      <select
-        id="${escapeAttr(id)}"
-        name="${escapeAttr(name)}"
-        required
-        ${error ? 'aria-invalid="true"' : ''}
-        ${described ? `aria-describedby="${escapeAttr(described)}"` : ''}
-      >
-        <option value="">Choose one</option>
-        ${INDIAN_STATES.map((state) => `<option value="${escapeAttr(state)}"${state === value ? ' selected' : ''}>${escapeHtml(state)}</option>`).join('')}
-      </select>
-      ${error ? `<p class="field-error" id="${escapeAttr(id)}-error">${escapeHtml(error)}</p>` : ''}
-    </div>
-  `;
-}
-
-function quantityStepper(quantity) {
-  return `
-    <div class="qty" role="group" aria-label="Quantity">
-      <button type="button" class="qty-button" data-qty-decrease aria-label="Decrease quantity" ${quantity === 0 ? 'disabled' : ''}>−</button>
-      <span class="qty-value" data-qty-value aria-live="polite">${quantity}</span>
-      <button type="button" class="qty-button" data-qty-increase aria-label="Increase quantity" ${quantity >= PRODUCT.maxQuantity ? 'disabled' : ''}>+</button>
-    </div>
-  `;
-}
 
 function routeMini(route) {
   const long = route === 'long';
@@ -135,16 +33,12 @@ function opportunityTimeline() {
 export function renderHome({
   cart,
   csrfToken,
-  errors = {},
-  values = {},
   notice = '',
-  idempotencyKey,
 }) {
   const quantity = cart?.quantity ?? 0;
   const totals = cart?.totals ?? totalsFor(quantity);
   const cartId = cart?.id || '';
   const revision = cart?.revision || 0;
-  const hasErrors = Object.keys(errors).length > 0;
 
   const bodyData = [
     `data-page="home"`,
@@ -158,82 +52,117 @@ export function renderHome({
 
   const body = `
     <main id="main">
+      <div class="guide-head shell">
+        <p>Owner's field guide</p>
+        <p>Plate 01 · Floor toy</p>
+        <p>${escapeHtml(PRODUCT.sku)}</p>
+      </div>
+
       <section class="hero shell" aria-labelledby="hero-title">
-        <div class="hero-copy">
-          <p class="eyebrow reveal">The floor toy that holds its place</p>
-          <h1 id="hero-title" class="reveal">A route your dog can <em>feel.</em><br>And return to.</h1>
-          <p class="hero-lead reveal">${escapeHtml(PRODUCT.description)} Walk away, and the next step stays raised.</p>
-          <div class="hero-buy reveal">
-            <a class="button button--ink button--large" href="#demo">Try a route <span aria-hidden="true">→</span></a>
-            <a class="button button--outline button--large" href="#buy">Buy TrailTurn</a>
+        <figure class="hero-visual reveal">
+          <div class="hero-plate">
+            <div class="plate-grid" aria-hidden="true"></div>
+            <span class="plate-index" aria-hidden="true">Fig. 01</span>
+            <img class="hero-toy" src="/assets/toy-plate.svg" alt="Original illustration of TrailTurn: a low forest-green floor toy with three cream paddles in a shallow arc and a reward cup at the front. The back paddle is raised." width="1000" height="780">
+            <span class="annotation annotation--a"><span class="annotation-dot" aria-hidden="true"></span>Held step</span>
+            <span class="annotation annotation--b"><span class="annotation-dot" aria-hidden="true"></span>Tomato route</span>
+            <span class="annotation annotation--c"><span class="annotation-dot" aria-hidden="true"></span>Reward cup</span>
+            <div class="route-chip">
+              <span class="route-chip-label">Route card A</span>
+              <span class="route-chip-name">Long way</span>
+              <span class="route-chip-seq">1 <span aria-hidden="true">→</span> 2 <span aria-hidden="true">→</span> 3</span>
+            </div>
           </div>
-          <p class="hero-price reveal"><strong>${formatINR(PRODUCT.unitPricePaise)}</strong> <span>+ ${formatINR(PRODUCT.deliveryPaise)} delivery</span> <span class="dot" aria-hidden="true">·</span> <span>${formatINR(totalsFor(1).totalPaise)} for one, delivered</span></p>
+          <figcaption class="hero-caption">
+            <span>Plate 01 — three-quarter view</span>
+            <span>Forest green · cream paddles · tomato route</span>
+          </figcaption>
+        </figure>
+
+        <div class="hero-copy">
+          <p class="eyebrow reveal">TrailTurn · the floor toy that holds its place</p>
+          <h1 id="hero-title" class="reveal">A route your dog can <em>feel.</em><br>And return to.</h1>
+          <p class="hero-mechanism reveal">Three cream paddles in a shallow arc. One stays raised, a reward cup waits at the front, and the route is still there when your dog comes back.</p>
+
+          <div class="buy-panel reveal" id="buy">
+            <div class="buy-panel-top">
+              <p class="buy-name">TrailTurn <span>No. 01</span></p>
+              <p class="buy-stock">Concept shop · demo checkout</p>
+            </div>
+            <div class="buy-price-row">
+              <p class="buy-price"><strong>${formatINR(PRODUCT.unitPricePaise)}</strong><span>+ ${formatINR(PRODUCT.deliveryPaise)} delivery</span></p>
+              <p class="buy-delivered">${formatINR(totalsFor(1).totalPaise)} delivered</p>
+            </div>
+            ${notice ? `<p class="notice notice--warn" role="status">${escapeHtml(notice)}</p>` : ''}
+            <div class="notice notice--warn" data-cart-notice hidden role="status" tabindex="-1"></div>
+            <form class="buy-form" method="post" action="/cart">
+              <input type="hidden" name="csrf" value="${escapeAttr(csrfToken)}">
+              <input type="hidden" name="cartId" value="${escapeAttr(cartId)}">
+              <input type="hidden" name="revision" value="${revision}">
+              <input type="hidden" name="quantity" value="${Math.min(quantity + 1, PRODUCT.maxQuantity)}" data-buy-quantity>
+              <div class="buy-row">
+                <div class="qty" role="group" aria-label="Quantity">
+                  <button type="button" class="qty-button" data-qty-decrease aria-label="Decrease quantity" ${quantity === 0 ? 'disabled' : ''}>−</button>
+                  <span class="qty-value" data-qty-value aria-live="polite">${quantity}</span>
+                  <button type="button" class="qty-button" data-qty-increase aria-label="Increase quantity" ${quantity >= PRODUCT.maxQuantity ? 'disabled' : ''}>+</button>
+                </div>
+                <button type="submit" class="button button--tomato button--large buy-add" ${quantity >= PRODUCT.maxQuantity ? 'disabled' : ''}>
+                  <span data-buy-label>${quantity ? 'Add another' : 'Add to cart'}</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              </div>
+            </form>
+            <a class="button button--forest button--full buy-checkout" href="/checkout" data-checkout-link ${quantity ? '' : 'aria-disabled="true"'}>
+              <span>Checkout</span>
+              <span data-total>${formatINR(totals.totalPaise)}</span>
+            </a>
+            <p class="buy-note">${quantity ? 'In your basket. Delivery is charged once per order.' : 'No payment collected. This demo creates a receipt only.'}</p>
+          </div>
+
           <ul class="hero-facts reveal" aria-label="TrailTurn at a glance">
             <li><span>45</span> min window</li>
             <li><span>4</span> timed chances</li>
             <li><span>1</span> route held</li>
           </ul>
-        </div>
-
-        <div class="hero-visual reveal">
-          <div class="hero-plate">
-            <div class="plate-grid" aria-hidden="true"></div>
-            <img class="hero-toy" src="/assets/toy-hero.svg" alt="Low green drum with three cream paddles and a front reward cup. Paddle one is raised." width="760" height="760">
-            <span class="annotation annotation--a"><span class="annotation-dot" aria-hidden="true"></span>Raised paddle</span>
-            <span class="annotation annotation--b"><span class="annotation-dot" aria-hidden="true"></span>Route diagram</span>
-            <span class="annotation annotation--c"><span class="annotation-dot" aria-hidden="true"></span>Reward cup</span>
-            <div class="route-chip">
-              <span class="route-chip-label">Route A</span>
-              <span class="route-chip-name">Long way</span>
-              <span class="route-chip-seq">1 <span aria-hidden="true">→</span> 2 <span aria-hidden="true">→</span> 3</span>
-            </div>
-          </div>
-          <div class="hero-caption">
-            <span>Concept study 01</span>
-            <span>Moss green · cream paddles · front cup</span>
-          </div>
+          <p class="hero-route reveal"><span>Route cards</span> Long way 1 <span aria-hidden="true">→</span> 2 <span aria-hidden="true">→</span> 3 <span class="dot" aria-hidden="true">·</span> Switchback 1 <span aria-hidden="true">→</span> 3 <span aria-hidden="true">→</span> 2</p>
         </div>
       </section>
 
-      <div class="marquee" aria-hidden="true">
-        <div class="marquee-track">
-          <span>One route</span><span class="marquee-dot">·</span><span>Four chances</span><span class="marquee-dot">·</span><span>No pile-ups</span><span class="marquee-dot">·</span><span>Walk away, come back</span><span class="marquee-dot">·</span>
-          <span>One route</span><span class="marquee-dot">·</span><span>Four chances</span><span class="marquee-dot">·</span><span>No pile-ups</span><span class="marquee-dot">·</span><span>Walk away, come back</span><span class="marquee-dot">·</span>
+      <div class="guide-strip" aria-hidden="true">
+        <div class="shell guide-strip-inner">
+          <span>One route</span><span>Four timed chances</span><span>No pile-ups</span><span>Walk away, come back</span>
         </div>
       </div>
 
-      <section class="section shell" id="difference" aria-labelledby="difference-title">
-        ${sectionLabel('01', 'Why a route')}
-        <div class="section-heading split-heading">
+      <section class="field-notes shell" id="difference" aria-labelledby="difference-title">
+        <div class="field-notes-head">
+          ${sectionLabel('01', 'Field notes')}
           <h2 id="difference-title" class="reveal">A sequence is a trick.<br><em>A route is a conversation.</em></h2>
-          <p class="section-lead reveal">Touchpad games already teach a dog to touch pads in order. TrailTurn is built around what happens between the steps: the pause, the walk-away, the return.</p>
+          <p class="field-notes-lead reveal">Touchpad games already teach a dog to touch pads in order. TrailTurn is built around what happens between the steps: the pause, the walk-away, the return.</p>
         </div>
-        <div class="principle-grid">
-          <article class="principle-card reveal">
-            <span class="principle-number">01</span>
-            <div class="principle-icon" aria-hidden="true">
-              <svg viewBox="0 0 64 64"><circle cx="32" cy="34" r="20" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M32 34 L32 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="32" cy="15" r="5" fill="currentColor"/><path d="M17 48c8 4 22 4 30 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="3 4"/></svg>
+        <ol class="field-note-list">
+          <li class="reveal">
+            <span class="field-note-number">01</span>
+            <div>
+              <h3>It keeps the next step up</h3>
+              <p>The drum holds the current paddle physically raised. No screen, no reset, no starting from the beginning.</p>
             </div>
-            <h3>It keeps the next step up</h3>
-            <p>The drum holds the current paddle physically raised. No screen, no reset, no starting from the beginning.</p>
-          </article>
-          <article class="principle-card reveal">
-            <span class="principle-number">02</span>
-            <div class="principle-icon" aria-hidden="true">
-              <svg viewBox="0 0 64 64"><path d="M12 38c8-14 24-20 38-12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="4 5"/><path d="M44 18l7 8-10 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="46" r="5" fill="currentColor"/><path d="M28 52h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </li>
+          <li class="reveal">
+            <span class="field-note-number">02</span>
+            <div>
+              <h3>It resumes where you left it</h3>
+              <p>Step away after the first push. The route waits. Come back and the next paddle is still the next paddle.</p>
             </div>
-            <h3>It resumes where you left it</h3>
-            <p>Step away after the first push. The route waits. Come back and the next paddle is still the next paddle.</p>
-          </article>
-          <article class="principle-card reveal">
-            <span class="principle-number">03</span>
-            <div class="principle-icon" aria-hidden="true">
-              <svg viewBox="0 0 64 64"><circle cx="20" cy="24" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="32" cy="24" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="44" cy="24" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M14 44h36" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M20 36l24 8M44 36l-24 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.45"/></svg>
+          </li>
+          <li class="reveal">
+            <span class="field-note-number">03</span>
+            <div>
+              <h3>It lets a chance pass</h3>
+              <p>A missed 15-minute slot doesn't empty a pile of portions into the next one. The opportunity passes; the route stays.</p>
             </div>
-            <h3>It lets a chance pass</h3>
-            <p>A missed 15-minute slot doesn't empty a pile of portions into the next one. The opportunity passes; the route stays.</p>
-          </article>
-        </div>
+          </li>
+        </ol>
         <div class="difference-strip reveal">
           <p class="difference-quote">“The useful part isn't the push. It's the pause before the next one.”</p>
           <div class="difference-timeline" aria-label="A missed opportunity does not stack portions">
@@ -252,32 +181,32 @@ export function renderHome({
         ${sectionLabel('02', 'The object')}
         <div class="section-heading split-heading">
           <h2 id="toy-title" class="reveal">One object.<br><em>Three ways to read it.</em></h2>
-          <p class="section-lead reveal">The same three-paddle outline runs through the room, the route, and the lift. The diagram is not decoration — it is how the owner sets the path.</p>
+          <p class="section-lead reveal">The same three-paddle outline runs through the plate, the plan, and the lift. These are working drawings, not photographs: they describe the geometry the shop is built around.</p>
         </div>
         <div class="gallery-layout">
           <div class="gallery reveal" data-gallery>
             <figure class="gallery-main">
               <div class="gallery-frame">
-                <img data-gallery-image src="/assets/toy-room.svg" alt="TrailTurn on a rug in a quiet room, with one paddle raised" width="1200" height="900">
+                <img data-gallery-image src="/assets/toy-plan.svg" alt="Overhead view of TrailTurn: three cream paddles in a shallow arc, a tomato route, and a front reward cup" width="800" height="800">
                 <span class="gallery-index" data-gallery-count>01 / 03</span>
               </div>
               <figcaption>
-                <span data-gallery-caption>In the room</span>
-                <span class="gallery-note">Concept illustration</span>
+                <span data-gallery-caption>The route, from above</span>
+                <span class="gallery-note">Original illustration</span>
               </figcaption>
             </figure>
             <div class="gallery-thumbs" role="group" aria-label="Product views">
-              <button type="button" class="gallery-thumb is-active" data-gallery-thumb data-src="/assets/toy-room.svg" data-alt="TrailTurn on a rug in a quiet room, with one paddle raised" data-caption="In the room" data-count="01 / 03" aria-pressed="true">
-                <img src="/assets/toy-room.svg" alt="" width="240" height="180">
-                <span>In the room</span>
+              <button type="button" class="gallery-thumb is-active" data-gallery-thumb data-src="/assets/toy-plan.svg" data-alt="Overhead view of TrailTurn: three cream paddles in a shallow arc, a tomato route, and a front reward cup" data-caption="The route, from above" data-count="01 / 03" aria-pressed="true">
+                <img src="/assets/toy-plan.svg" alt="" width="240" height="240">
+                <span>The plan</span>
               </button>
-              <button type="button" class="gallery-thumb" data-gallery-thumb data-src="/assets/toy-route.svg" data-alt="Top view of TrailTurn showing the Long way and Switchback routes" data-caption="The route" data-count="02 / 03" aria-pressed="false">
-                <img src="/assets/toy-route.svg" alt="" width="240" height="180">
-                <span>The route</span>
-              </button>
-              <button type="button" class="gallery-thumb" data-gallery-thumb data-src="/assets/toy-side.svg" data-alt="Side view of TrailTurn with the first paddle lifted" data-caption="The lift" data-count="03 / 03" aria-pressed="false">
-                <img src="/assets/toy-side.svg" alt="" width="240" height="180">
+              <button type="button" class="gallery-thumb" data-gallery-thumb data-src="/assets/toy-lift.svg" data-alt="Low side view of TrailTurn with the first cream paddle lifted and the reward cup at the front" data-caption="The lift, from the side" data-count="02 / 03" aria-pressed="false">
+                <img src="/assets/toy-lift.svg" alt="" width="240" height="187">
                 <span>The lift</span>
+              </button>
+              <button type="button" class="gallery-thumb" data-gallery-thumb data-src="/assets/toy-plate.svg" data-alt="Three-quarter view of TrailTurn: a low forest-green body, three cream paddles, and a front reward cup" data-caption="The whole object" data-count="03 / 03" aria-pressed="false">
+                <img src="/assets/toy-plate.svg" alt="" width="240" height="187">
+                <span>The plate</span>
               </button>
             </div>
           </div>
@@ -286,7 +215,7 @@ export function renderHome({
             <p>Set the route card under the clear top. The dog works the raised paddle; the drum indexes the route. The diagram stays visible during setup, so the path is a shared plan rather than a hidden trick.</p>
             <dl class="spec-list">
               <div><dt>Footprint</dt><dd>34 cm across · 11 cm tall · 2.1 kg</dd></div>
-              <div><dt>Finish</dt><dd>Moss-green body · broad cream paddles · front reward cup</dd></div>
+              <div><dt>Finish</dt><dd>Forest-green body · broad cream paddles · front reward cup</dd></div>
               <div><dt>Route</dt><dd>Three paddles · four timed chances · one held step</dd></div>
               <div><dt>Care</dt><dd>Wipe-clean top · supervised floor play · not a chew toy</dd></div>
             </dl>
@@ -301,7 +230,7 @@ export function renderHome({
             </div>
             <div class="toy-buyline">
               <span class="toy-price">${formatINR(PRODUCT.unitPricePaise)}</span>
-              <a class="button button--ink" href="#buy">Choose TrailTurn</a>
+              <a class="button button--forest" href="#buy">Choose TrailTurn</a>
             </div>
             <p class="fine-print">Illustrations, not photographs. The product is a concept; materials and dimensions are proposed demo details.</p>
           </div>
@@ -483,163 +412,25 @@ export function renderHome({
         </div>
       </section>
 
-      <section class="section section--buy shell" id="buy" aria-labelledby="buy-title">
-        ${sectionLabel('05', 'Buy')}
-        <div class="buy-layout">
-          <div class="buy-copy reveal">
-            <h2 id="buy-title">A small first run.<br><em>One clear total.</em></h2>
-            <p class="section-lead">One TrailTurn, one route card set, and a receipt you can reload. Guest checkout — no account, no payment in this demo.</p>
-            <div class="buy-price">
-              <span class="buy-price-main">${formatINR(PRODUCT.unitPricePaise)}</span>
-              <span class="buy-price-sub">+ ${formatINR(PRODUCT.deliveryPaise)} delivery · limit ${PRODUCT.maxQuantity} per order</span>
-            </div>
-            <ul class="buy-points">
-              <li><span aria-hidden="true">01</span>Delivery fee shown before checkout.</li>
-              <li><span aria-hidden="true">02</span>Total recalculated on the server.</li>
-              <li><span aria-hidden="true">03</span>Receipt link plus email lookup.</li>
-              <li><span aria-hidden="true">04</span>Demo order — no charge, no shipment.</li>
-            </ul>
-            <div class="buy-note">
-              <p class="eyebrow">What this demo proves</p>
-              <p>A guest can choose a quantity, see the full price, place one order, and reload an authorized receipt. The route demo and the shop share the same three-paddle language.</p>
-            </div>
-            <div class="buy-route-card" aria-hidden="true">
-              <div class="buy-route-head"><span>ROUTE A</span><span>LONG WAY</span></div>
-              <svg viewBox="0 0 260 120">
-                <circle cx="130" cy="60" r="48" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.35"/>
-                <path d="M130 22 L178 92 L82 92" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 6"/>
-                <circle cx="130" cy="22" r="8" fill="currentColor"/>
-                <circle cx="178" cy="92" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/>
-                <circle cx="82" cy="92" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/>
-                <text x="130" y="26" text-anchor="middle" font-family="Instrument Sans, sans-serif" font-size="9" font-weight="700" fill="#f3eee4">1</text>
-                <text x="178" y="96" text-anchor="middle" font-family="Instrument Sans, sans-serif" font-size="9" font-weight="700" fill="currentColor">2</text>
-                <text x="82" y="96" text-anchor="middle" font-family="Instrument Sans, sans-serif" font-size="9" font-weight="700" fill="currentColor">3</text>
-              </svg>
-              <div class="buy-route-foot"><span>0 · 15 · 30 · 45</span><span>ONE STEP HELD</span></div>
-            </div>
-          </div>
-
-          <div class="checkout-card reveal">
-            <div class="checkout-head">
-              <div>
-                <p class="eyebrow">Guest checkout</p>
-                <h3>Where should it go?</h3>
-              </div>
-              <span class="checkout-step">01 / 01</span>
-            </div>
-
-            ${errorSummary(errors)}
-            ${notice ? `<div class="notice notice--warn" role="status">${escapeHtml(notice)}</div>` : ''}
-            <div class="notice notice--warn" data-cart-notice hidden role="status" tabindex="-1"></div>
-            <noscript>
-              <form method="post" action="/cart">
-                <input type="hidden" name="csrf" value="${escapeAttr(csrfToken)}">
-                <input type="hidden" name="cartId" value="${escapeAttr(cartId)}">
-                <input type="hidden" name="revision" value="${revision}">
-                <label>Basket quantity <select name="quantity">${Array.from({length: PRODUCT.maxQuantity + 1}, (_, n) => `<option${n === quantity ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
-                <button class="button button--outline" type="submit">Update basket</button>
-              </form>
-            </noscript>
-
-            <form id="checkout-form" class="checkout-form" method="post" action="/checkout" novalidate data-checkout-form data-checkout-phase="${hasErrors || notice ? 'recoverable-failure' : 'editing'}">
-              <input type="hidden" name="cartId" value="${escapeAttr(cartId)}" data-cart-id-input>
-              <input type="hidden" name="revision" value="${escapeAttr(revision)}" data-cart-revision-input>
-              <input type="hidden" name="idempotencyKey" value="${escapeAttr(idempotencyKey)}" data-idempotency-input>
-              <input type="hidden" name="csrf" value="${escapeAttr(csrfToken)}">
-
-              <div class="order-summary" aria-label="Order summary">
-                <div class="order-product">
-                  <img src="/assets/toy-top.svg" alt="" width="96" height="96">
-                  <div>
-                    <p class="order-name">${escapeHtml(PRODUCT.name)}</p>
-                    <p class="order-meta">Route card set included · ${escapeHtml(PRODUCT.sku)}</p>
-                    <p class="order-delivery">Delivery in 5–7 working days (demo)</p>
-                  </div>
-                  ${quantityStepper(quantity)}
-                </div>
-                <dl class="price-lines">
-                  <div><dt>Subtotal <span data-summary-qty>${quantity}</span> × ${formatINR(PRODUCT.unitPricePaise)}</dt><dd data-subtotal>${formatINR(totals.subtotalPaise)}</dd></div>
-                  <div><dt>Delivery</dt><dd data-delivery>${formatINR(totals.deliveryPaise)}</dd></div>
-                  <div class="price-total"><dt>Total</dt><dd data-total>${formatINR(totals.totalPaise)}</dd></div>
-                </dl>
-                 <p class="order-note" data-empty-basket ${quantity ? 'hidden' : ''}>Your basket is empty. Add a TrailTurn to check out.</p>
-                 <p class="order-note">Total includes all amounts due. Delivery is charged once per nonempty order; limit ${PRODUCT.maxQuantity} units.</p>
-              </div>
-
-              <fieldset class="form-section">
-                <legend>Contact</legend>
-                <div class="field-grid">
-                  ${textField({ id: 'field-fullName', name: 'fullName', label: FIELD_LABELS.fullName, value: values.fullName || '', error: errors.fullName || '', autocomplete: 'name', placeholder: 'Asha Rao', maxlength: 80 })}
-                  ${textField({ id: 'field-email', name: 'email', label: FIELD_LABELS.email, value: values.email || '', error: errors.email || '', type: 'email', autocomplete: 'email', placeholder: 'asha@example.com', help: 'Your receipt link is sent here in a real shop. This demo shows it on screen.', maxlength: 254 })}
-                </div>
-                <div class="field-grid field-grid--narrow">
-                  <div class="field${errors.phone ? ' field--error' : ''}">
-                    <label for="field-phone">Mobile number<span class="req" aria-hidden="true">*</span></label>
-                    <div class="phone-input">
-                      <span class="phone-prefix" aria-hidden="true">+91</span>
-                      <input
-                        id="field-phone"
-                        name="phone"
-                        type="tel"
-                        inputmode="numeric"
-                        autocomplete="tel-national"
-                        value="${escapeAttr(values.phone || '')}"
-                        placeholder="98765 43210"
-                        maxlength="10"
-                        required
-                        ${errors.phone ? 'aria-invalid="true"' : ''}
-                        ${errors.phone ? 'aria-describedby="field-phone-error"' : ''}
-                      >
-                    </div>
-                    ${errors.phone ? `<p class="field-error" id="field-phone-error">${escapeHtml(errors.phone)}</p>` : ''}
-                  </div>
-                </div>
-              </fieldset>
-
-              <fieldset class="form-section">
-                <legend>Delivery address</legend>
-                <div class="field-grid">
-                  ${textField({ id: 'field-address1', name: 'address1', label: FIELD_LABELS.address1, value: values.address1 || '', error: errors.address1 || '', autocomplete: 'address-line1', placeholder: 'Flat 4B, 12 Neem Lane', maxlength: 120 })}
-                  ${textField({ id: 'field-address2', name: 'address2', label: FIELD_LABELS.address2, value: values.address2 || '', error: errors.address2 || '', autocomplete: 'address-line2', placeholder: 'Near the old post office', required: false, maxlength: 120 })}
-                </div>
-                <div class="field-grid field-grid--three">
-                  ${textField({ id: 'field-city', name: 'city', label: FIELD_LABELS.city, value: values.city || '', error: errors.city || '', autocomplete: 'address-level2', placeholder: 'Pune', maxlength: 60 })}
-                  ${selectField({ id: 'field-state', name: 'state', label: FIELD_LABELS.state, value: values.state || '', error: errors.state || '' })}
-                  ${textField({ id: 'field-pin', name: 'pin', label: FIELD_LABELS.pin, value: values.pin || '', error: errors.pin || '', autocomplete: 'postal-code', inputmode: 'numeric', placeholder: '411001', maxlength: 6 })}
-                </div>
-              </fieldset>
-
-              <div class="checkout-commit">
-                <button type="submit" class="button button--ink button--large button--full" data-checkout-submit ${quantity ? '' : 'disabled'}>
-                  <span data-checkout-submit-label>Place demo order · ${formatINR(totals.totalPaise)}</span>
-                  <span aria-hidden="true">→</span>
-                </button>
-                <p class="checkout-status" data-checkout-status role="status" aria-live="polite"></p>
-                <p class="checkout-fine">No payment is collected. This creates a demo receipt only. By placing the order you agree to the demo terms above.</p>
-              </div>
-            </form>
-
-            <p class="checkout-lookup">Already ordered? <a href="/receipt">Find your receipt <span aria-hidden="true">→</span></a></p>
-          </div>
+      <section class="closing shell" id="order" aria-labelledby="order-title">
+        <div class="closing-plate reveal">
+          <img src="/assets/toy-plan.svg" alt="" width="800" height="800">
         </div>
-
-        <div class="demo-notes reveal">
-          <div>
-            <p class="eyebrow">Built in this demo</p>
-            <p>Guest checkout, server-side totals, a revision check for stale tabs, an idempotent order, and a receipt that requires authorization.</p>
+        <div class="closing-copy reveal">
+          <p class="eyebrow">One clear total</p>
+          <h2 id="order-title">Take the route home.</h2>
+          <p class="closing-lead">One TrailTurn, two route cards, and a receipt you can reload. Guest checkout — no account, no payment collected.</p>
+          <div class="closing-price">
+            <span>${formatINR(PRODUCT.unitPricePaise)}</span>
+            <span>+ ${formatINR(PRODUCT.deliveryPaise)} delivery</span>
+            <strong>${formatINR(totalsFor(1).totalPaise)} delivered</strong>
           </div>
-          <div>
-            <p class="eyebrow">Simulated decisions</p>
-            <p>${formatINR(PRODUCT.unitPricePaise)} price, ${formatINR(PRODUCT.deliveryPaise)} delivery, ${PRODUCT.maxQuantity}-unit limit, Indian address fields, two named routes, and the missed-round policy.</p>
-          </div>
-          <div>
-            <p class="eyebrow">Still a prototype question</p>
-            <p>Whether dogs discover the cue, choose to re-engage, and whether the mechanism is reliable for unsupervised use. Those need physical testing.</p>
-          </div>
+          <a class="button button--tomato button--large" href="#buy">Add TrailTurn <span aria-hidden="true">↑</span></a>
+          <p class="closing-fine">Demo order only. No charge, no shipment. The route demo and the shop share the same three-paddle language.</p>
         </div>
       </section>
     </main>
   `;
 
-  return { body, bodyData, bodyClass: hasErrors ? 'page-home has-form-errors' : 'page-home' };
+  return { body, bodyData, bodyClass: 'page-home' };
 }

@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 780" role="img" aria-labelledby="plateTitle plateDesc">
+  <title id="plateTitle">TrailTurn, three-quarter view</title>
+  <desc id="plateDesc">A low forest-green floor toy with three cream paddles in a shallow arc. The back paddle is raised, a tomato-red route runs between the paddles, and a cream reward cup sits at the front.</desc>
+  <defs>
+    <filter id="softShadow" x="-30%" y="-80%" width="160%" height="260%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+    <clipPath id="bodyClip">
+      <path d="M190 380 L190 480 A310 180 0 0 0 810 480 L810 380 Z"/>
+    </clipPath>
+  </defs>
+
+  <ellipse cx="500" cy="612" rx="326" ry="46" fill="#20251F" opacity="0.13" filter="url(#softShadow)"/>
+
+  <g>
+    <path d="M190 380 L190 480 A310 180 0 0 0 810 480 L810 380 Z" fill="#294C3C" stroke="#20251F" stroke-width="5" stroke-linejoin="round"/>
+    <g clip-path="url(#bodyClip)" opacity="0.28" stroke="#F5F0E5" stroke-width="2">
+      <path d="M238 500 L238 560"/>
+      <path d="M270 514 L270 574"/>
+      <path d="M302 526 L302 586"/>
+      <path d="M730 500 L730 560"/>
+      <path d="M698 514 L698 574"/>
+      <path d="M666 526 L666 586"/>
+    </g>
+    <path d="M210 510 C300 582 700 582 790 510" fill="none" stroke="#1E3A2E" stroke-width="12" opacity="0.45"/>
+    <path d="M214 518 C305 588 695 588 786 518" fill="none" stroke="#F5F0E5" stroke-width="2" opacity="0.18"/>
+
+    <ellipse cx="500" cy="380" rx="310" ry="180" fill="#355C48" stroke="#20251F" stroke-width="5"/>
+    <ellipse cx="500" cy="380" rx="286" ry="160" fill="none" stroke="#F5F0E5" stroke-width="2.5" opacity="0.42"/>
+
+    <g opacity="0.18" fill="none" stroke="#F5F0E5" stroke-width="2">
+      <ellipse cx="500" cy="380" rx="244" ry="124"/>
+      <ellipse cx="500" cy="380" rx="198" ry="92"/>
+    </g>
+
+    <path d="M500 330 C438 350 382 380 350 420" fill="none" stroke="#B93827" stroke-width="5" stroke-linecap="round" stroke-dasharray="11 10"/>
+    <path d="M350 420 C430 460 570 460 650 420" fill="none" stroke="#B93827" stroke-width="5" stroke-linecap="round" stroke-dasharray="11 10"/>
+    <circle cx="500" cy="330" r="7" fill="#B93827"/>
+    <circle cx="350" cy="420" r="7" fill="#B93827"/>
+    <circle cx="650" cy="420" r="7" fill="#B93827"/>
+
+    <g transform="translate(500 330)">
+      <rect x="-76" y="-18" width="152" height="52" rx="26" fill="#1F3A2E" opacity="0.72"/>
+      <rect x="-44" y="-6" width="88" height="30" rx="15" fill="#F5F0E5" opacity="0.16"/>
+    </g>
+    <g transform="translate(500 246) rotate(-4)">
+      <rect x="-70" y="-54" width="140" height="124" rx="62" fill="#1F3A2E" opacity="0.35"/>
+      <path d="M-78 30 C-78 -34 -42 -64 0 -64 C42 -64 78 -34 78 30 C78 56 50 70 0 70 C-50 70 -78 56 -78 30 Z" fill="#F1E7D0" stroke="#20251F" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M-52 -18 C-38 -42 -12 -48 8 -42" fill="none" stroke="#FBF7EF" stroke-width="7" stroke-linecap="round" opacity="0.8"/>
+      <text x="0" y="23" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="46" fill="#20251F">1</text>
+    </g>
+
+    <g transform="translate(350 424) rotate(-33)">
+      <rect x="-74" y="-30" width="148" height="92" rx="46" fill="#1F3A2E" opacity="0.38"/>
+      <rect x="-72" y="-22" width="144" height="66" rx="33" fill="#3F6B54" stroke="#20251F" stroke-width="3"/>
+      <rect x="-72" y="-58" width="144" height="92" rx="46" fill="#F1E7D0" stroke="#20251F" stroke-width="5"/>
+      <path d="M-48 -34 C-32 -48 -10 -50 8 -44" fill="none" stroke="#FBF7EF" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+      <text x="0" y="8" text-anchor="middle" transform="rotate(33)" font-family="Georgia, 'Times New Roman', serif" font-size="40" fill="#20251F">2</text>
+    </g>
+
+    <g transform="translate(650 424) rotate(33)">
+      <rect x="-74" y="-30" width="148" height="92" rx="46" fill="#1F3A2E" opacity="0.38"/>
+      <rect x="-72" y="-22" width="144" height="66" rx="33" fill="#3F6B54" stroke="#20251F" stroke-width="3"/>
+      <rect x="-72" y="-58" width="144" height="92" rx="46" fill="#F1E7D0" stroke="#20251F" stroke-width="5"/>
+      <path d="M-48 -34 C-32 -48 -10 -50 8 -44" fill="none" stroke="#FBF7EF" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+      <text x="0" y="8" text-anchor="middle" transform="rotate(-33)" font-family="Georgia, 'Times New Roman', serif" font-size="40" fill="#20251F">3</text>
+    </g>
+
+    <g transform="translate(500 586)">
+      <rect x="-34" y="-40" width="68" height="52" rx="14" fill="#294C3C" stroke="#20251F" stroke-width="4"/>
+      <path d="M-80 -6 C-80 58 80 58 80 -6" fill="#F1E7D0" stroke="#20251F" stroke-width="5" stroke-linejoin="round"/>
+      <ellipse cx="0" cy="-6" rx="80" ry="26" fill="#F1E7D0" stroke="#20251F" stroke-width="5"/>
+      <ellipse cx="0" cy="-6" rx="60" ry="17" fill="#B93827" stroke="#20251F" stroke-width="3"/>
+      <circle cx="-22" cy="-8" r="6" fill="#F5F0E5"/>
+      <circle cx="8" cy="-2" r="6" fill="#F5F0E5"/>
+      <circle cx="26" cy="-11" r="5" fill="#F5F0E5"/>
+      <path d="M-66 12 C-56 36 -32 46 0 48" fill="none" stroke="#20251F" stroke-width="3" stroke-linecap="round" opacity="0.35"/>
+    </g>
+  </g>
+</svg>

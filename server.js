@@ -39,6 +39,7 @@ import {
 } from './src/security.js';
 import { page } from './src/views/layout.js';
 import { renderHome } from './src/views/home.js';
+import { renderCart, renderCheckout } from './src/views/purchase.js';
 import { renderReceipt, renderReceiptLocked } from './src/views/receipt.js';
 import { renderLookup } from './src/views/lookup.js';
 import { renderNotes } from './src/views/notes.js';
@@ -352,7 +353,7 @@ function guestKey(req, key) {
   return createHmac('sha256', RECEIPT_SECRET).update(`checkout:${session}:${key}`).digest('hex');
 }
 
-function renderHomePage(req, res, store, {
+function renderShopPage(req, res, store, screen, {
   status = 200,
   errors = {},
   values = {},
@@ -369,7 +370,8 @@ function renderHomePage(req, res, store, {
     cartCookie(req, res, cart.id);
   }
   const key = idempotencyFrom(idempotencyKey) || newIdempotencyKey();
-  const view = renderHome({
+  const renderer = { home: renderHome, cart: renderCart, checkout: renderCheckout }[screen];
+  const view = renderer({
     cart,
     csrfToken,
     errors,
@@ -377,17 +379,17 @@ function renderHomePage(req, res, store, {
     notice,
     idempotencyKey: key,
   });
-  const html = page({
-    title: 'TrailTurn — a route your dog can feel',
-    description:
-      'TrailTurn is a concept floor toy that raises one paddle at a time, holds the route when a dog walks away, and resumes where it left off. Try two routes and place a demo guest order.',
+  sendHtml(res, status, page({
+    title: screen === 'home' ? 'TrailTurn — a route your dog can feel' : `${screen === 'cart' ? 'Your cart' : 'Checkout'} · TrailTurn`,
+    description: screen === 'home'
+      ? 'TrailTurn is a concept floor toy that raises one paddle at a time, holds the route when a dog walks away, and resumes where it left off. Try two routes and place a demo guest order.'
+      : 'Use the TrailTurn demo basket to place one guest order and open your receipt.',
     body: view.body,
     bodyClass: view.bodyClass,
     bodyData: view.bodyData,
     cartQuantity: cart.quantity,
-    current: 'toy',
-  });
-  sendHtml(res, status, html);
+    current: 'shop',
+  }));
 }
 
 function renderLookupPage(req, res, store, { status = 200, values = {}, errors = {}, notice = '' } = {}) {
@@ -579,8 +581,8 @@ export function createApp({
         return;
       }
 
-      if (path === '/' && method === 'GET') {
-        renderHomePage(req, res, store);
+      if (['/', '/cart', '/checkout'].includes(path) && method === 'GET') {
+        renderShopPage(req, res, store, path === '/' ? 'home' : path.slice(1));
         return;
       }
 
@@ -616,11 +618,11 @@ export function createApp({
         const check = validateQuantity(form.quantity);
         const cart = cartFromRequest(req, res, store);
         if (!cart || cart.id !== form.cartId || cart.revision !== Number(form.revision) || !check.ok) {
-          renderHomePage(req, res, store, { status: check.ok ? 409 : 422, notice: check.message || 'Review the current basket quantity and try again.' });
+          renderShopPage(req, res, store, 'cart', { status: check.ok ? 409 : 422, notice: check.message || 'Review the current basket quantity and try again.' });
           return;
         }
         store.updateCartQuantity({ cartId: cart.id, guestId: guestId(req), expectedRevision: cart.revision, quantity: check.quantity });
-        redirect(res, '/#buy');
+        redirect(res, '/cart');
         return;
       }
 
@@ -804,7 +806,7 @@ export function createApp({
         const customerCheck = validateCustomer(form);
 
         if (!customerCheck.ok) {
-          renderHomePage(req, res, store, {
+          renderShopPage(req, res, store, 'checkout', {
             status: 422,
             errors: customerCheck.errors,
             values: customerCheck.values,
@@ -822,7 +824,7 @@ export function createApp({
 
         const replay = requestedCartId && !cookieCartId ? store.getOrderByIdempotencyKey(key, guestId(req)) : null;
         if (requestedCartId && requestedCartId !== cookieCartId && replay?.cartId !== requestedCartId) {
-          renderHomePage(req, res, store, {
+          renderShopPage(req, res, store, 'checkout', {
             status: 409,
             values: customerCheck.values,
             notice: 'This cart changed somewhere else. Review the current total and try again.',
@@ -856,7 +858,7 @@ export function createApp({
           }
           const mapped = storeErrorToApi(error);
           if (!mapped) throw error;
-          renderHomePage(req, res, store, {
+          renderShopPage(req, res, store, 'checkout', {
             status: mapped.status,
             values: customerCheck.values,
             notice: storeErrorToNotice(error),
